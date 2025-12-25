@@ -145,8 +145,77 @@ pub fn resolve_shot(
     state.shot_index = state.shot_index.saturating_add(1);
 
     if state.shot_index >= TOTAL_SHOTS {
-        state.phase = Phase::Ended;
-        info!("End complete - all 16 stones thrown");
+        // End complete - calculate score
+        let stone_positions: Vec<(Team, Vec2)> = stones
+            .iter()
+            .map(|(_, transform, stone)| {
+                (
+                    stone.team,
+                    Vec2::new(transform.translation.x, transform.translation.y),
+                )
+            })
+            .collect();
+
+        let (red_points, blue_points) = score_end(&stone_positions);
+        state.red_score += red_points;
+        state.blue_score += blue_points;
+
+        info!(
+            end = state.current_end,
+            red_points = red_points,
+            blue_points = blue_points,
+            red_total = state.red_score,
+            blue_total = state.blue_score,
+            "End scored"
+        );
+
+        // Determine who throws first next end (scoring team throws first = loses hammer)
+        // If blank end (no score), hammer stays with same team
+        if red_points > 0 {
+            state.first_throw_team = Team::Red;
+            debug!("Red scored, Blue gets hammer next end");
+        } else if blue_points > 0 {
+            state.first_throw_team = Team::Blue;
+            debug!("Blue scored, Red gets hammer next end");
+        } else {
+            debug!(
+                "Blank end, hammer stays with {:?}",
+                state.first_throw_team.opponent()
+            );
+        }
+
+        // Clear all stones from the ice
+        for (entity, _, _) in stones.iter() {
+            commands.entity(entity).despawn();
+        }
+
+        // Check if game is over
+        state.current_end += 1;
+        if state.current_end > state.total_ends {
+            state.phase = Phase::Ended;
+            let winner = if state.red_score > state.blue_score {
+                "Red"
+            } else if state.blue_score > state.red_score {
+                "Blue"
+            } else {
+                "Tie"
+            };
+            info!(
+                red_final = state.red_score,
+                blue_final = state.blue_score,
+                winner = winner,
+                "Game complete!"
+            );
+        } else {
+            // Set up for next end
+            state.reset_for_new_end();
+            info!(
+                next_end = state.current_end,
+                first_throw = state.first_throw_team.name(),
+                hammer = state.first_throw_team.opponent().name(),
+                "Starting new end"
+            );
+        }
     } else {
         state.phase = Phase::CallingShot;
         state.shot_type = ShotType::Draw;

@@ -11,7 +11,7 @@ use crate::resources::*;
 
 /// Updates the window title to reflect current game state.
 ///
-/// Shows shot number, team, angle, weight, and current phase.
+/// Shows end number, scores, shot number, team, and current phase.
 pub fn update_window_title(mut windows: Query<&mut Window>, state: Res<GameState>) {
     if !state.is_changed() {
         return;
@@ -22,21 +22,24 @@ pub fn update_window_title(mut windows: Query<&mut Window>, state: Res<GameState
         Phase::Aiming => "Aiming (Space to throw)",
         Phase::StoneMoving => "Stones moving",
         Phase::Resolve => "Resolving shot",
-        Phase::Ended => "End complete",
+        Phase::Ended => "Game Over",
     };
 
     let title = if state.phase == Phase::Ended {
-        "Curling - End Complete".to_string()
+        format!(
+            "Curling - FINAL: Red {} - Blue {}",
+            state.red_score, state.blue_score
+        )
     } else {
         format!(
-            "Curling - Shot {}/{} | Team {} | Call {:.1} deg / {:.1} | Aim {:.1} deg / {:.1} | {}",
+            "Curling - End {}/{} | Red {} - Blue {} | Shot {}/{} | {} | {}",
+            state.current_end,
+            state.total_ends,
+            state.red_score,
+            state.blue_score,
             state.shot_index + 1,
             TOTAL_SHOTS,
             state.current_team().name(),
-            state.called_angle_deg,
-            state.called_weight,
-            state.aim_angle_deg,
-            state.aim_weight,
             phase_label
         )
     };
@@ -80,18 +83,37 @@ pub fn update_ui(
             Phase::Aiming => "Ready to Throw",
             Phase::StoneMoving => "Stone Moving",
             Phase::Resolve => "Resolving",
-            Phase::Ended => "End Complete",
+            Phase::Ended => "Game Over",
         };
 
-        **status = format!(
-            "Shot {}/{} - {} - Weight: {:.1} | Angle: {:.1}° | {}",
-            state.shot_index + 1,
-            TOTAL_SHOTS,
-            state.current_team().name(),
-            state.called_weight,
-            state.called_angle_deg,
-            phase_str
-        );
+        let hammer_team = state.first_throw_team.opponent();
+
+        if state.phase == Phase::Ended {
+            let winner = if state.red_score > state.blue_score {
+                "Red Wins!"
+            } else if state.blue_score > state.red_score {
+                "Blue Wins!"
+            } else {
+                "Tie Game!"
+            };
+            **status = format!(
+                "FINAL: Red {} - Blue {} | {}",
+                state.red_score, state.blue_score, winner
+            );
+        } else {
+            **status = format!(
+                "End {}/{} | Red {} - Blue {} | Shot {}/{} {} | Hammer: {} | {}",
+                state.current_end,
+                state.total_ends,
+                state.red_score,
+                state.blue_score,
+                state.shot_index + 1,
+                TOTAL_SHOTS,
+                state.current_team().name(),
+                hammer_team.name(),
+                phase_str
+            );
+        }
     }
 
     // Update confirm button text

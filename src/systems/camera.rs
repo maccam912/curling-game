@@ -74,7 +74,8 @@ pub fn camera_control_system(
         CameraMode::FollowStone => {
             if let Some(stone_transform) = thrown_stone_query.iter().next() {
                 let stone_pos = stone_transform.translation;
-                camera_state.target_position = Vec3::new(stone_pos.x, stone_pos.y - 5.0, 3.0);
+                // Lower camera (1.5m) and further back (7m) so stone is visible above house buttons
+                camera_state.target_position = Vec3::new(stone_pos.x, stone_pos.y - 7.0, 1.5);
                 camera_state.target_look_at = Vec3::new(stone_pos.x, stone_pos.y + 10.0, 0.0);
             }
         }

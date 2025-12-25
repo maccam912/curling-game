@@ -60,6 +60,14 @@ impl Team {
             Team::Blue => "Blue",
         }
     }
+
+    /// Returns the opposing team.
+    pub fn opponent(self) -> Team {
+        match self {
+            Team::Red => Team::Blue,
+            Team::Blue => Team::Red,
+        }
+    }
 }
 
 // ============================================================================

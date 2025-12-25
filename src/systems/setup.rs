@@ -5,12 +5,30 @@
 use bevy::math::primitives::{Cuboid, Cylinder};
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
+use rand::Rng;
 use tracing::{debug, info};
 
 use crate::components::*;
 use crate::constants::*;
 use crate::helpers::*;
-use crate::resources::StoneAssets;
+use crate::resources::{GameState, StoneAssets};
+
+/// Randomizes which team throws first at game start.
+///
+/// This gives a fair 50/50 chance for either team to have hammer (throw last).
+pub fn randomize_first_team(mut state: ResMut<GameState>) {
+    let mut rng = rand::rng();
+    state.first_throw_team = if rng.random_bool(0.5) {
+        Team::Red
+    } else {
+        Team::Blue
+    };
+    info!(
+        first_throw = state.first_throw_team.name(),
+        hammer = state.first_throw_team.opponent().name(),
+        "Randomized starting teams"
+    );
+}
 
 /// Configures the Rapier physics engine.
 ///

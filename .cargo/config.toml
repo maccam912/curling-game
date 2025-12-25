@@ -1,5 +1,11 @@
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld.exe"
+# Commented out - rust-lld can be slow on Windows with Bevy
+# [target.x86_64-pc-windows-msvc]
+# linker = "rust-lld.exe"
 
 [target.wasm32-unknown-unknown]
 runner = "wasm-server-runner"
+
+# Use sccache if installed for faster rebuilds
+# Uncomment if you have sccache installed:
+# [build]
+# rustc-wrapper = "sccache"

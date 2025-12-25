@@ -100,6 +100,7 @@ impl Plugin for CurlingPlugin {
                     systems::setup_scene,
                     systems::configure_rapier,
                     systems::setup_ui,
+                    systems::randomize_first_team,
                 ),
             )
             // Physics systems run at fixed rate for consistency

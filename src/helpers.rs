@@ -303,3 +303,66 @@ pub fn snapshot_stones(
         fgz_active: shot_index < 5,
     }
 }
+
+// ============================================================================
+// SCORING FUNCTIONS
+// ============================================================================
+
+/// Calculates the score for an end based on stone positions.
+///
+/// In curling, only one team can score per end. The team with the stone
+/// closest to the tee (button) scores one point for each of their stones
+/// that is closer to the tee than the opponent's closest stone.
+///
+/// # Arguments
+/// * `stones` - Query of all stones on the ice
+///
+/// # Returns
+/// A tuple of (red_score, blue_score) for this end. One will always be 0.
+/// If the house is empty, both will be 0 (blank end).
+pub fn score_end(stones: &[(Team, Vec2)]) -> (u32, u32) {
+    // Calculate distance from tee for each stone
+    let tee = Vec2::new(0.0, tee_line_far());
+
+    // Collect stones that are "biting" (touching) the house
+    let mut scoring_stones: Vec<(Team, f32)> = stones
+        .iter()
+        .filter_map(|(team, pos)| {
+            let dist = pos.distance(tee);
+            // Stone must be biting the house (within 12-foot + stone radius)
+            if dist <= HOUSE_RADIUS_12 + STONE_RADIUS {
+                Some((*team, dist))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    // Sort by distance (closest first)
+    scoring_stones.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap());
+
+    if scoring_stones.is_empty() {
+        return (0, 0); // Blank end
+    }
+
+    // The team with the closest stone scores
+    let scoring_team = scoring_stones[0].0;
+
+    // Find the closest opponent stone distance (or infinity if none)
+    let opponent_closest = scoring_stones
+        .iter()
+        .find(|(team, _)| *team != scoring_team)
+        .map(|(_, dist)| *dist)
+        .unwrap_or(f32::INFINITY);
+
+    // Count scoring team's stones closer than opponent's closest
+    let points = scoring_stones
+        .iter()
+        .filter(|(team, dist)| *team == scoring_team && *dist < opponent_closest)
+        .count() as u32;
+
+    match scoring_team {
+        Team::Red => (points, 0),
+        Team::Blue => (0, points),
+    }
+}

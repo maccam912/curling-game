@@ -46,6 +46,16 @@ pub struct GameState {
     pub snapshot: Option<ShotSnapshot>,
     /// Curl direction for the next throw.
     pub curl_direction: CurlDirection,
+    /// Current end number (1-based).
+    pub current_end: u8,
+    /// Red team's cumulative score.
+    pub red_score: u32,
+    /// Blue team's cumulative score.
+    pub blue_score: u32,
+    /// Team that throws first this end (opponent has hammer).
+    pub first_throw_team: Team,
+    /// Total number of ends in the game.
+    pub total_ends: u8,
 }
 
 impl Default for GameState {
@@ -63,14 +73,45 @@ impl Default for GameState {
             still_time: 0.0,
             snapshot: None,
             curl_direction: CurlDirection::default(),
+            current_end: 1,
+            red_score: 0,
+            blue_score: 0,
+            first_throw_team: Team::Red, // Will be randomized at startup
+            total_ends: 8,
         }
     }
 }
 
 impl GameState {
     /// Returns the team that should throw the current shot.
+    ///
+    /// Takes into account which team throws first this end (first_throw_team).
     pub fn current_team(&self) -> Team {
-        Team::from_shot_index(self.shot_index)
+        // Even shots (0, 2, 4...) are thrown by first_throw_team
+        // Odd shots (1, 3, 5...) are thrown by the opponent
+        if self.shot_index % 2 == 0 {
+            self.first_throw_team
+        } else {
+            self.first_throw_team.opponent()
+        }
+    }
+
+    /// Resets state for a new end while preserving scores.
+    ///
+    /// Call this after scoring an end to set up for the next end.
+    pub fn reset_for_new_end(&mut self) {
+        self.phase = Phase::CallingShot;
+        self.shot_index = 0;
+        self.shot_type = ShotType::Draw;
+        self.broom_position = Vec2::new(0.0, TEE_FROM_CENTER);
+        self.called_angle_deg = 0.0;
+        self.called_weight = ShotType::Draw.default_weight();
+        self.aim_angle_deg = 0.0;
+        self.aim_weight = ShotType::Draw.default_weight();
+        self.thrown_stone = None;
+        self.still_time = 0.0;
+        self.snapshot = None;
+        self.curl_direction = CurlDirection::default();
     }
 
     /// Calculate throw angle from broom position.
