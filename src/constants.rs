@@ -125,3 +125,13 @@ pub const WEIGHT_RATE: f32 = 6.0;
 
 /// Y-coordinate where stone delivery starts (near the hack).
 pub const DELIVERY_START_Y: f32 = -TEE_FROM_CENTER - BACK_FROM_TEE;
+
+// ============================================================================
+// MODEL CONSTANTS
+// ============================================================================
+
+/// Scale factor for GLB stone models to match physics collider.
+pub const MODEL_SCALE: f32 = 0.285;
+
+/// Z offset for GLB stone models to align with ice surface.
+pub const MODEL_Z_OFFSET: f32 = 0.10;

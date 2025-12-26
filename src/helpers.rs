@@ -173,31 +173,35 @@ pub fn spawn_stone(
         });
     }
 
-    // Spawn visual representation based on team
-    match team {
-        Team::Red => {
-            // Use GLB model for red stones
-            let visual_offset =
-                Transform::from_translation(Vec3::new(0.0, 0.0, STONE_HEIGHT * 0.5))
-                    .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2));
-            commands.entity(stone_entity).with_children(|parent| {
-                parent.spawn((SceneRoot(assets.red_scene.clone()), visual_offset));
-            });
+    // Spawn visual representation based on team using appropriate GLB model
+    let scene = match team {
+        Team::Red => assets.red_scene.clone(),
+        Team::Blue => assets.blue_scene.clone(),
+    };
+    // Apply model scale and z-offset from constants
+    let model_transform = Transform::from_translation(Vec3::new(0.0, 0.0, MODEL_Z_OFFSET))
+        .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2))
+        .with_scale(Vec3::splat(MODEL_SCALE));
+    commands.entity(stone_entity).with_children(|parent| {
+        // GLB model
+        parent.spawn((
+            crate::components::StoneVisual,
+            SceneRoot(scene),
+            model_transform,
+        ));
+
+        // Debug cylinder showing physics collider bounds
+        #[cfg(feature = "debug_mode")]
+        {
+            let debug_offset = Transform::from_translation(Vec3::new(0.0, 0.0, STONE_HEIGHT * 0.5))
+                .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2));
+            parent.spawn((
+                Mesh3d(assets.debug_mesh.clone()),
+                MeshMaterial3d(assets.debug_material.clone()),
+                debug_offset,
+            ));
         }
-        Team::Blue => {
-            // Use procedural mesh for blue stones
-            let visual_offset =
-                Transform::from_translation(Vec3::new(0.0, 0.0, STONE_HEIGHT * 0.5))
-                    .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2));
-            commands.entity(stone_entity).with_children(|parent| {
-                parent.spawn((
-                    Mesh3d(assets.mesh.clone()),
-                    MeshMaterial3d(assets.blue_material.clone()),
-                    visual_offset,
-                ));
-            });
-        }
-    }
+    });
 
     stone_entity
 }

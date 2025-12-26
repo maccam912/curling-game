@@ -102,15 +102,13 @@ pub fn update_ui(
             );
         } else {
             **status = format!(
-                "End {}/{} | Red {} - Blue {} | Shot {}/{} {} | Hammer: {} | {}",
+                "End {}/{} | Shot {}/{} {} | Weight: {:.1} | {}",
                 state.current_end,
                 state.total_ends,
-                state.red_score,
-                state.blue_score,
                 state.shot_index + 1,
                 TOTAL_SHOTS,
                 state.current_team().name(),
-                hammer_team.name(),
+                state.called_weight,
                 phase_str
             );
         }
@@ -137,5 +135,142 @@ pub fn update_ui(
         } else {
             BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8))
         };
+    }
+}
+
+/// Handles tuning slider button interactions.
+///
+/// Adjusts scale and Z offset values based on button presses.
+pub fn handle_tuning_buttons(
+    mut tuning: ResMut<ModelTuning>,
+    scale_buttons: Query<(&Interaction, &TuningAdjust), (Changed<Interaction>, With<ScaleSlider>)>,
+    z_buttons: Query<
+        (&Interaction, &TuningAdjust),
+        (
+            Changed<Interaction>,
+            With<ZOffsetSlider>,
+            Without<ScaleSlider>,
+        ),
+    >,
+    mut scale_label: Query<&mut Text, (With<ScaleValueLabel>, Without<ZOffsetValueLabel>)>,
+    mut z_label: Query<&mut Text, (With<ZOffsetValueLabel>, Without<ScaleValueLabel>)>,
+) {
+    const SCALE_STEP: f32 = 0.01;
+    const Z_STEP: f32 = 0.01;
+
+    // Handle scale buttons
+    for (interaction, adjust) in scale_buttons.iter() {
+        if *interaction == Interaction::Pressed {
+            match adjust {
+                TuningAdjust::Increase => tuning.scale = (tuning.scale + SCALE_STEP).min(2.0),
+                TuningAdjust::Decrease => tuning.scale = (tuning.scale - SCALE_STEP).max(0.01),
+            }
+            // Update label
+            for mut text in scale_label.iter_mut() {
+                **text = format!("{:.2}", tuning.scale);
+            }
+        }
+    }
+
+    // Handle Z offset buttons
+    for (interaction, adjust) in z_buttons.iter() {
+        if *interaction == Interaction::Pressed {
+            match adjust {
+                TuningAdjust::Increase => tuning.z_offset = (tuning.z_offset + Z_STEP).min(1.0),
+                TuningAdjust::Decrease => tuning.z_offset = (tuning.z_offset - Z_STEP).max(-1.0),
+            }
+            // Update label
+            for mut text in z_label.iter_mut() {
+                **text = format!("{:.2}", tuning.z_offset);
+            }
+        }
+    }
+}
+
+/// Applies model tuning to all red stone visuals.
+///
+/// Updates transform (scale and Z position) based on ModelTuning resource.
+pub fn apply_model_tuning(
+    tuning: Res<ModelTuning>,
+    mut visuals: Query<&mut Transform, With<StoneVisual>>,
+) {
+    if !tuning.is_changed() {
+        return;
+    }
+
+    for mut transform in visuals.iter_mut() {
+        transform.scale = Vec3::splat(tuning.scale);
+        transform.translation.z = tuning.z_offset;
+        // Keep the rotation
+        transform.rotation = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
+    }
+}
+
+/// Handles the debug quick-simulate button.
+///
+/// Places 15 stones randomly in the house and sets up for the hammer throw.
+#[cfg(feature = "debug_mode")]
+pub fn handle_debug_quick_sim(
+    mut commands: Commands,
+    assets: Res<crate::resources::StoneAssets>,
+    mut state: ResMut<GameState>,
+    button_query: Query<&Interaction, (Changed<Interaction>, With<DebugQuickSimButton>)>,
+    existing_stones: Query<Entity, With<Stone>>,
+) {
+    use rand::Rng;
+
+    for interaction in button_query.iter() {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        // Only work if we're in calling shot phase at the start of an end
+        if state.phase != Phase::CallingShot {
+            continue;
+        }
+
+        // Remove any existing stones
+        for entity in existing_stones.iter() {
+            commands.entity(entity).despawn();
+        }
+
+        let mut rng = rand::rng();
+
+        // Place 15 stones (alternating teams) randomly in/around the house
+        // Hammer team (who throws last) gets all odd shot indices
+        // Shot 15 (index 15) is the hammer throw - we leave that for the player
+        for shot_idx in 0u8..15 {
+            let team = if shot_idx % 2 == 0 {
+                state.first_throw_team
+            } else {
+                state.first_throw_team.opponent()
+            };
+
+            // Random position in/around the house (within 12-foot ring + some margin)
+            let tee_y = TEE_FROM_CENTER;
+            let angle: f32 = rng.random_range(0.0..std::f32::consts::TAU);
+            let radius: f32 = rng.random_range(0.0..(HOUSE_RADIUS_12 + STONE_RADIUS));
+            let x = angle.cos() * radius;
+            let y = tee_y + angle.sin() * radius;
+
+            crate::helpers::spawn_stone(
+                &mut commands,
+                &assets,
+                team,
+                Vec2::new(x, y),
+                Vec2::ZERO,
+                false,
+                CurlDirection::default(),
+            );
+        }
+
+        // Set game state to shot 15 (the hammer throw)
+        state.shot_index = 15;
+        state.phase = Phase::CallingShot;
+
+        tracing::info!(
+            team = state.current_team().name(),
+            "Quick sim: placed 15 stones, ready for hammer throw"
+        );
     }
 }

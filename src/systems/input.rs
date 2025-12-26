@@ -147,12 +147,18 @@ pub fn handle_broom_drag(
     camera_query: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut state: ResMut<GameState>,
     mut touch_state: ResMut<TouchState>,
+    ui_interactions: Query<&Interaction, With<Button>>,
 ) {
     // Only allow broom dragging during CallingShot phase
     if state.phase != Phase::CallingShot {
         touch_state.dragging = false;
         return;
     }
+
+    // Don't start a drag if clicking on a UI button
+    let any_ui_pressed = ui_interactions
+        .iter()
+        .any(|i| *i == Interaction::Pressed || *i == Interaction::Hovered);
 
     let Ok(window) = window_query.single() else {
         return;
@@ -166,8 +172,8 @@ pub fn handle_broom_drag(
         return;
     };
 
-    // Check for drag start
-    if mouse_button.just_pressed(MouseButton::Left) {
+    // Check for drag start - only if not clicking UI
+    if mouse_button.just_pressed(MouseButton::Left) && !any_ui_pressed {
         touch_state.dragging = true;
         touch_state.drag_start = cursor_pos;
         trace!("Broom drag started at {:?}", cursor_pos);
@@ -177,10 +183,17 @@ pub fn handle_broom_drag(
     if mouse_button.pressed(MouseButton::Left) && touch_state.dragging {
         if let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_pos) {
             // Intersect ray with Z=0 plane (ice surface)
+            debug!(
+                ray_origin = ?ray.origin,
+                ray_direction = ?ray.direction,
+                "Broom drag raycast"
+            );
             if ray.direction.z.abs() > 0.0001 {
                 let t = -ray.origin.z / ray.direction.z;
+                debug!(t = t, "Raycast t parameter");
                 if t > 0.0 {
                     let world_pos = ray.origin + ray.direction * t;
+                    debug!(world_pos = ?world_pos, "Raycast world position");
 
                     // Clamp to playable area
                     let half_width = SHEET_WIDTH * 0.5 - 0.2;
@@ -196,9 +209,10 @@ pub fn handle_broom_drag(
                     state.called_angle_deg = state.angle_from_broom();
                     state.called_weight = state.weight_from_broom();
 
-                    trace!(
+                    debug!(
                         broom_x = state.broom_position.x,
                         broom_y = state.broom_position.y,
+                        weight = state.called_weight,
                         "Broom position updated"
                     );
                 }
@@ -310,6 +324,11 @@ pub fn handle_touch_input(
                 match state.phase {
                     Phase::CallingShot => {
                         // Confirm the shot call
+                        debug!(
+                            before_broom_y = state.broom_position.y,
+                            before_called_weight = state.called_weight,
+                            "Before confirm"
+                        );
                         state.aim_angle_deg = state.angle_from_broom();
                         state.aim_weight = state.called_weight;
                         state.phase = Phase::Aiming;
@@ -317,7 +336,7 @@ pub fn handle_touch_input(
                             shot_index = state.shot_index + 1,
                             team = state.current_team().name(),
                             angle = state.aim_angle_deg,
-                            weight = state.called_weight,
+                            weight = state.aim_weight,
                             "Shot confirmed via button"
                         );
                     }

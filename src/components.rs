@@ -251,3 +251,35 @@ pub struct CurlButton(pub CurlDirection);
 /// Marker for the status text display.
 #[derive(Component)]
 pub struct StatusText;
+
+/// Marker for the debug quick-simulate button (only in debug_mode).
+#[cfg(feature = "debug_mode")]
+#[derive(Component)]
+pub struct DebugQuickSimButton;
+
+/// Marker for the GLB model visual (for tuning).
+#[derive(Component)]
+pub struct StoneVisual;
+
+/// Marker for the scale slider.
+#[derive(Component)]
+pub struct ScaleSlider;
+
+/// Marker for the Z offset slider.
+#[derive(Component)]
+pub struct ZOffsetSlider;
+
+/// Marker for the scale value label.
+#[derive(Component)]
+pub struct ScaleValueLabel;
+
+/// Marker for the Z offset value label.
+#[derive(Component)]
+pub struct ZOffsetValueLabel;
+
+/// Direction for tuning adjustments.
+#[derive(Component, Clone, Copy)]
+pub enum TuningAdjust {
+    Increase,
+    Decrease,
+}

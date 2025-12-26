@@ -191,14 +191,40 @@ pub struct TouchState {
 /// Cached mesh and material handles for spawning stones.
 #[derive(Resource)]
 pub struct StoneAssets {
-    /// Shared mesh for all stones (used for blue team).
-    pub mesh: Handle<Mesh>,
     /// Scene handle for red team stones (loaded from GLB).
     pub red_scene: Handle<Scene>,
-    /// Material for red team stones (fallback).
-    pub red_material: Handle<StandardMaterial>,
-    /// Material for blue team stones.
-    pub blue_material: Handle<StandardMaterial>,
+    /// Scene handle for blue team stones (loaded from GLB).
+    pub blue_scene: Handle<Scene>,
+    /// Debug mesh (cylinder) showing physics collider bounds.
+    #[cfg(feature = "debug_mode")]
+    pub debug_mesh: Handle<Mesh>,
+    /// Semi-transparent material for debug cylinder.
+    #[cfg(feature = "debug_mode")]
+    pub debug_material: Handle<StandardMaterial>,
+}
+
+// ============================================================================
+// MODEL TUNING (DEBUG)
+// ============================================================================
+
+/// Debug resource for tuning the GLB model transform.
+///
+/// Allows live adjustment of scale and Z offset via UI sliders.
+#[derive(Resource)]
+pub struct ModelTuning {
+    /// Uniform scale factor for the model.
+    pub scale: f32,
+    /// Z offset (height above physics body).
+    pub z_offset: f32,
+}
+
+impl Default for ModelTuning {
+    fn default() -> Self {
+        Self {
+            scale: 0.285,   // Tuned to match physics collider
+            z_offset: 0.10, // Tuned to align with ice surface
+        }
+    }
 }
 
 // ============================================================================

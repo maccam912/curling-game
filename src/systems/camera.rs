@@ -29,14 +29,23 @@ pub fn camera_control_system(
 
     // Determine target camera mode based on game phase
     let desired_mode = match state.phase {
-        Phase::CallingShot => camera_state.mode, // Keep current (user can toggle)
+        Phase::CallingShot => {
+            // During CallingShot, prefer SkipView but allow user toggle
+            // If not in SkipView or Overhead (valid calling modes), reset to SkipView
+            match camera_state.mode {
+                CameraMode::SkipView | CameraMode::Overhead => camera_state.mode,
+                _ => CameraMode::SkipView,
+            }
+        }
         Phase::Aiming => CameraMode::ThrowingView,
         Phase::StoneMoving => CameraMode::FollowStone,
         Phase::Resolve | Phase::Ended => CameraMode::SkipView,
     };
 
     // Only auto-switch if not in CallingShot (user can toggle in CallingShot)
-    if state.phase != Phase::CallingShot && camera_state.mode != desired_mode {
+    // OR if current mode is invalid for CallingShot phase
+    let should_switch = camera_state.mode != desired_mode;
+    if should_switch {
         let previous_mode = camera_state.mode;
         camera_state.mode = desired_mode;
         camera_state.transition_progress = 0.0;

@@ -92,6 +92,7 @@ impl Plugin for CurlingPlugin {
             .insert_resource(resources::GameState::default())
             .insert_resource(resources::CameraState::default())
             .insert_resource(resources::TouchState::default())
+            .insert_resource(resources::ModelTuning::default())
             .insert_resource(Time::<Fixed>::from_hz(60.0))
             // Startup systems
             .add_systems(
@@ -122,8 +123,14 @@ impl Plugin for CurlingPlugin {
                     systems::resolve_shot,
                     systems::camera_control_system,
                     systems::update_ui,
+                    systems::handle_tuning_buttons,
+                    systems::apply_model_tuning,
                 ),
             );
+
+        // Debug-only systems
+        #[cfg(feature = "debug_mode")]
+        app.add_systems(Update, systems::handle_debug_quick_sim);
     }
 }
 

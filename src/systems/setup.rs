@@ -228,24 +228,29 @@ pub fn setup_scene(
     }
     debug!("Created houses at near and far ends");
 
-    // Stone Assets
-    let stone_mesh = meshes.add(Cylinder::new(STONE_RADIUS, STONE_HEIGHT));
-    // Load red stone GLB model
+    // Stone Assets - load GLB models for each team
     let red_scene: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("red.glb"));
-    let red_material = materials.add(StandardMaterial {
-        base_color: Team::Red.color(),
+    let blue_scene: Handle<Scene> =
+        asset_server.load(GltfAssetLabel::Scene(0).from_asset("blue.glb"));
+
+    // Create debug mesh and material when debug_mode is enabled
+    #[cfg(feature = "debug_mode")]
+    let debug_mesh = meshes.add(Cylinder::new(STONE_RADIUS, STONE_HEIGHT));
+    #[cfg(feature = "debug_mode")]
+    let debug_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.0, 1.0, 0.0, 0.3), // Semi-transparent green
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
         ..default()
     });
-    let blue_material = materials.add(StandardMaterial {
-        base_color: Team::Blue.color(),
-        ..default()
-    });
+
     commands.insert_resource(StoneAssets {
-        mesh: stone_mesh,
         red_scene,
-        red_material,
-        blue_material,
+        blue_scene,
+        #[cfg(feature = "debug_mode")]
+        debug_mesh,
+        #[cfg(feature = "debug_mode")]
+        debug_material,
     });
 
     // Broom target indicator
@@ -305,6 +310,189 @@ pub fn setup_ui(mut commands: Commands) {
                     ..default()
                 },
             ));
+
+            // Debug tuning panel (top-right)
+            parent
+                .spawn(Node {
+                    position_type: PositionType::Absolute,
+                    right: Val::Px(20.0),
+                    top: Val::Px(20.0),
+                    flex_direction: FlexDirection::Column,
+                    row_gap: Val::Px(10.0),
+                    padding: UiRect::all(Val::Px(10.0)),
+                    ..default()
+                })
+                .insert(BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)))
+                .insert(BorderRadius::all(Val::Px(8.0)))
+                .with_children(|panel| {
+                    // Title
+                    panel.spawn((
+                        Text::new("Model Tuning"),
+                        TextFont {
+                            font_size: 18.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+
+                    // Scale control row
+                    panel
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: Val::Px(8.0),
+                            align_items: AlignItems::Center,
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Text::new("Scale:"),
+                                TextFont {
+                                    font_size: 14.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                            // Minus button
+                            row.spawn((
+                                ScaleSlider,
+                                Button,
+                                Node {
+                                    width: Val::Px(30.0),
+                                    height: Val::Px(30.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgba(0.5, 0.2, 0.2, 0.9)),
+                                BorderRadius::all(Val::Px(4.0)),
+                                TuningAdjust::Decrease,
+                            ))
+                            .with_child((
+                                Text::new("-"),
+                                TextFont {
+                                    font_size: 20.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                            // Value display
+                            row.spawn((
+                                ScaleValueLabel,
+                                Text::new("0.53"),
+                                TextFont {
+                                    font_size: 14.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.5, 1.0, 0.5)),
+                                Node {
+                                    min_width: Val::Px(50.0),
+                                    ..default()
+                                },
+                            ));
+                            // Plus button
+                            row.spawn((
+                                ScaleSlider,
+                                Button,
+                                Node {
+                                    width: Val::Px(30.0),
+                                    height: Val::Px(30.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgba(0.2, 0.5, 0.2, 0.9)),
+                                BorderRadius::all(Val::Px(4.0)),
+                                TuningAdjust::Increase,
+                            ))
+                            .with_child((
+                                Text::new("+"),
+                                TextFont {
+                                    font_size: 20.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                        });
+
+                    // Z Offset control row
+                    panel
+                        .spawn(Node {
+                            flex_direction: FlexDirection::Row,
+                            column_gap: Val::Px(8.0),
+                            align_items: AlignItems::Center,
+                            ..default()
+                        })
+                        .with_children(|row| {
+                            row.spawn((
+                                Text::new("Z Off:"),
+                                TextFont {
+                                    font_size: 14.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                            // Minus button
+                            row.spawn((
+                                ZOffsetSlider,
+                                Button,
+                                Node {
+                                    width: Val::Px(30.0),
+                                    height: Val::Px(30.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgba(0.5, 0.2, 0.2, 0.9)),
+                                BorderRadius::all(Val::Px(4.0)),
+                                TuningAdjust::Decrease,
+                            ))
+                            .with_child((
+                                Text::new("-"),
+                                TextFont {
+                                    font_size: 20.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                            // Value display
+                            row.spawn((
+                                ZOffsetValueLabel,
+                                Text::new("0.18"),
+                                TextFont {
+                                    font_size: 14.0,
+                                    ..default()
+                                },
+                                TextColor(Color::srgb(0.5, 1.0, 0.5)),
+                                Node {
+                                    min_width: Val::Px(50.0),
+                                    ..default()
+                                },
+                            ));
+                            // Plus button
+                            row.spawn((
+                                ZOffsetSlider,
+                                Button,
+                                Node {
+                                    width: Val::Px(30.0),
+                                    height: Val::Px(30.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgba(0.2, 0.5, 0.2, 0.9)),
+                                BorderRadius::all(Val::Px(4.0)),
+                                TuningAdjust::Increase,
+                            ))
+                            .with_child((
+                                Text::new("+"),
+                                TextFont {
+                                    font_size: 20.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                        });
+                });
 
             // Spacer to push buttons to bottom
             parent.spawn(Node {
@@ -423,6 +611,32 @@ pub fn setup_ui(mut commands: Commands) {
                                     Text::new("Confirm Shot"),
                                     TextFont {
                                         font_size: 22.0,
+                                        ..default()
+                                    },
+                                    TextColor(Color::WHITE),
+                                ));
+                            });
+
+                            // Debug quick-simulate button (only in debug_mode)
+                            #[cfg(feature = "debug_mode")]
+                            row.spawn((
+                                DebugQuickSimButton,
+                                Button,
+                                Node {
+                                    width: Val::Px(100.0),
+                                    height: Val::Px(60.0),
+                                    justify_content: JustifyContent::Center,
+                                    align_items: AlignItems::Center,
+                                    ..default()
+                                },
+                                BackgroundColor(Color::srgba(0.6, 0.3, 0.1, 0.9)),
+                                BorderRadius::all(Val::Px(10.0)),
+                            ))
+                            .with_children(|btn| {
+                                btn.spawn((
+                                    Text::new("QUICK\nSIM"),
+                                    TextFont {
+                                        font_size: 14.0,
                                         ..default()
                                     },
                                     TextColor(Color::WHITE),
