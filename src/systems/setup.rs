@@ -2,6 +2,7 @@
 //!
 //! Systems that run during startup to initialize the game world.
 
+use bevy::gltf::GltfAssetLabel;
 use bevy::math::primitives::{Cuboid, Cylinder};
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
@@ -54,6 +55,7 @@ pub fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
 ) {
     info!("Setting up game scene");
 
@@ -228,6 +230,9 @@ pub fn setup_scene(
 
     // Stone Assets
     let stone_mesh = meshes.add(Cylinder::new(STONE_RADIUS, STONE_HEIGHT));
+    // Load red stone GLB model
+    let red_scene: Handle<Scene> =
+        asset_server.load(GltfAssetLabel::Scene(0).from_asset("red.glb"));
     let red_material = materials.add(StandardMaterial {
         base_color: Team::Red.color(),
         ..default()
@@ -238,6 +243,7 @@ pub fn setup_scene(
     });
     commands.insert_resource(StoneAssets {
         mesh: stone_mesh,
+        red_scene,
         red_material,
         blue_material,
     });

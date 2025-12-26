@@ -139,10 +139,6 @@ pub fn spawn_stone(
     mark_throwing: bool,
     curl_direction: CurlDirection,
 ) -> Entity {
-    let material = match team {
-        Team::Red => assets.red_material.clone(),
-        Team::Blue => assets.blue_material.clone(),
-    };
     let initial_angular_vel = curl_direction.angular_velocity();
 
     let stone_entity = commands
@@ -177,16 +173,31 @@ pub fn spawn_stone(
         });
     }
 
-    let visual_offset = Transform::from_translation(Vec3::new(0.0, 0.0, STONE_HEIGHT * 0.5))
-        .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2));
-
-    commands.entity(stone_entity).with_children(|parent| {
-        parent.spawn((
-            Mesh3d(assets.mesh.clone()),
-            MeshMaterial3d(material.clone()),
-            visual_offset,
-        ));
-    });
+    // Spawn visual representation based on team
+    match team {
+        Team::Red => {
+            // Use GLB model for red stones
+            let visual_offset =
+                Transform::from_translation(Vec3::new(0.0, 0.0, STONE_HEIGHT * 0.5))
+                    .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2));
+            commands.entity(stone_entity).with_children(|parent| {
+                parent.spawn((SceneRoot(assets.red_scene.clone()), visual_offset));
+            });
+        }
+        Team::Blue => {
+            // Use procedural mesh for blue stones
+            let visual_offset =
+                Transform::from_translation(Vec3::new(0.0, 0.0, STONE_HEIGHT * 0.5))
+                    .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2));
+            commands.entity(stone_entity).with_children(|parent| {
+                parent.spawn((
+                    Mesh3d(assets.mesh.clone()),
+                    MeshMaterial3d(assets.blue_material.clone()),
+                    visual_offset,
+                ));
+            });
+        }
+    }
 
     stone_entity
 }

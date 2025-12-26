@@ -191,9 +191,11 @@ pub struct TouchState {
 /// Cached mesh and material handles for spawning stones.
 #[derive(Resource)]
 pub struct StoneAssets {
-    /// Shared mesh for all stones.
+    /// Shared mesh for all stones (used for blue team).
     pub mesh: Handle<Mesh>,
-    /// Material for red team stones.
+    /// Scene handle for red team stones (loaded from GLB).
+    pub red_scene: Handle<Scene>,
+    /// Material for red team stones (fallback).
     pub red_material: Handle<StandardMaterial>,
     /// Material for blue team stones.
     pub blue_material: Handle<StandardMaterial>,
