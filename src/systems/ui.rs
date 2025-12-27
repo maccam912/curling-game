@@ -460,3 +460,125 @@ pub fn handle_debug_quick_sim(
         );
     }
 }
+
+/// Handles the debug skip-to-8th-end button.
+///
+/// Sets the game to end 8 with placeholder scores for previous ends.
+#[cfg(feature = "debug_mode")]
+pub fn handle_debug_skip_to_8th(
+    mut state: ResMut<GameState>,
+    button_query: Query<
+        &Interaction,
+        (
+            Changed<Interaction>,
+            With<crate::components::DebugSkipTo8thEndButton>,
+        ),
+    >,
+) {
+    for interaction in button_query.iter() {
+        if *interaction != Interaction::Pressed {
+            continue;
+        }
+
+        // Only work if we're in calling shot phase
+        if state.phase != Phase::CallingShot {
+            continue;
+        }
+
+        // Set to end 8
+        state.current_end = 8;
+
+        // Create placeholder end scores for ends 1-7
+        // Simulate a close game with alternating scoring
+        state.end_scores.clear();
+        state.team1_score = 0;
+        state.team2_score = 0;
+
+        // Add realistic-looking scores for ends 1-7
+        let scores = [
+            (2, 0), // End 1: Team 1 scores 2
+            (0, 1), // End 2: Team 2 scores 1
+            (0, 3), // End 3: Team 2 scores 3
+            (1, 0), // End 4: Team 1 scores 1
+            (0, 2), // End 5: Team 2 scores 2
+            (3, 0), // End 6: Team 1 scores 3
+            (0, 1), // End 7: Team 2 scores 1
+        ];
+
+        for (t1, t2) in scores {
+            state.end_scores.push((t1, t2));
+            state.team1_score += t1;
+            state.team2_score += t2;
+        }
+
+        tracing::info!(
+            current_end = state.current_end,
+            team1_score = state.team1_score,
+            team2_score = state.team2_score,
+            "Debug: Skipped to 8th end (Team 1: 6, Team 2: 7)"
+        );
+    }
+}
+
+/// Updates the game over panel visibility and content.
+///
+/// Shows the panel during Phase::Ended with score breakdown and winner.
+pub fn update_game_over_panel(
+    state: Res<GameState>,
+    mut panel_query: Query<&mut Visibility, With<GameOverPanel>>,
+    mut winner_query: Query<&mut Text, (With<GameOverWinnerText>, Without<GameOverScoreBreakdown>)>,
+    mut breakdown_query: Query<
+        &mut Text,
+        (With<GameOverScoreBreakdown>, Without<GameOverWinnerText>),
+    >,
+) {
+    // Show/hide panel based on phase
+    for mut visibility in panel_query.iter_mut() {
+        *visibility = if state.phase == Phase::Ended {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    // Update content during Ended phase
+    if state.phase == Phase::Ended {
+        // Update winner text
+        for mut text in winner_query.iter_mut() {
+            if state.team1_score > state.team2_score {
+                **text = format!("Team 1 Wins {} - {}!", state.team1_score, state.team2_score);
+            } else if state.team2_score > state.team1_score {
+                **text = format!("Team 2 Wins {} - {}!", state.team2_score, state.team1_score);
+            } else {
+                **text = format!("Tie Game {} - {}!", state.team1_score, state.team2_score);
+            }
+        }
+
+        // Update score breakdown table
+        for mut text in breakdown_query.iter_mut() {
+            let mut breakdown = String::new();
+            let mut team1_total = 0u32;
+            let mut team2_total = 0u32;
+
+            for (end_num, (t1, t2)) in state.end_scores.iter().enumerate() {
+                breakdown.push_str(&format!(
+                    " {:>2}      {:>3}      {:>3}\n",
+                    end_num + 1,
+                    t1,
+                    t2
+                ));
+                team1_total += t1;
+                team2_total += t2;
+            }
+
+            // Add total row
+            breakdown.push_str(&format!("────────────────────\n",));
+            breakdown.push_str(&format!(
+                "TOT     {:>3}      {:>3}",
+                team1_total, team2_total
+            ));
+
+            **text = breakdown;
+        }
+    }
+}

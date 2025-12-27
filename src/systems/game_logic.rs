@@ -263,6 +263,9 @@ pub fn handle_score_confirmation(
 
     // Add pending score to totals
     if let Some((team1_points, team2_points)) = state.pending_end_score.take() {
+        // Record this end's score in history
+        state.end_scores.push((team1_points, team2_points));
+
         state.team1_score += team1_points;
         state.team2_score += team2_points;
 
@@ -290,14 +293,15 @@ pub fn handle_score_confirmation(
     // Clear scoring entities list
     state.scoring_entities.clear();
 
-    // Clear all stones from the ice
-    for entity in stones.iter() {
-        commands.entity(entity).despawn();
-    }
-
     // Check if game is over
     state.current_end += 1;
     if state.current_end > state.total_ends {
+        // Game is over - keep stones on ice for the cool effect
+        // Remove ScoringStone markers but don't despawn
+        for entity in stones.iter() {
+            commands.entity(entity).remove::<ScoringStone>();
+        }
+
         state.phase = Phase::Ended;
         let winner = if state.team1_score > state.team2_score {
             "Team 1"
@@ -313,6 +317,11 @@ pub fn handle_score_confirmation(
             "Game complete!"
         );
     } else {
+        // Clear all stones from the ice for next end
+        for entity in stones.iter() {
+            commands.entity(entity).despawn();
+        }
+
         // Set up for next end
         state.reset_for_new_end();
         info!(

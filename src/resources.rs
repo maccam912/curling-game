@@ -60,6 +60,8 @@ pub struct GameState {
     pub pending_end_score: Option<(u32, u32)>,
     /// Entities of stones that count toward the score (for highlighting).
     pub scoring_entities: Vec<Entity>,
+    /// History of scores for each end: Vec<(team1_points, team2_points)>.
+    pub end_scores: Vec<(u32, u32)>,
 }
 
 impl Default for GameState {
@@ -84,6 +86,7 @@ impl Default for GameState {
             total_ends: 8,
             pending_end_score: None,
             scoring_entities: Vec::new(),
+            end_scores: Vec::new(),
         }
     }
 }
@@ -163,6 +166,8 @@ pub struct CameraState {
     pub follow_camera_height: f32,
     /// Whether the thrown stone has crossed the far hog line.
     pub stone_crossed_hog: bool,
+    /// Current orbit angle for game over camera (radians).
+    pub orbit_angle: f32,
 }
 
 impl Default for CameraState {
@@ -176,6 +181,7 @@ impl Default for CameraState {
             transition_duration: 0.5,
             follow_camera_height: FOLLOW_START_HEIGHT,
             stone_crossed_hog: false,
+            orbit_angle: 0.0,
         }
     }
 }

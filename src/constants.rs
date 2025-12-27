@@ -171,3 +171,12 @@ pub const CAMERA_RISE_RATE: f32 = 0.15;
 
 /// Height of HouseOverhead camera view.
 pub const HOUSE_OVERHEAD_HEIGHT: f32 = 8.0;
+
+/// Radius of the orbit path for game over camera.
+pub const ORBIT_RADIUS: f32 = 8.0;
+
+/// Height of the orbiting camera during game over.
+pub const ORBIT_HEIGHT: f32 = 5.0;
+
+/// Orbit speed in radians per second.
+pub const ORBIT_SPEED: f32 = 0.3;

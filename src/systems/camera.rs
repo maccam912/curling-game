@@ -8,7 +8,7 @@ use tracing::{debug, trace};
 
 use crate::components::*;
 use crate::constants::*;
-use crate::helpers::{back_line_far, hog_line_far};
+use crate::helpers::{back_line_far, hog_line_far, tee_line_far};
 use crate::resources::*;
 
 /// Controls camera position and transitions based on game phase.
@@ -81,7 +81,7 @@ pub fn camera_control_system(
             }
         }
         Phase::Resolve | Phase::ShowingScore => CameraMode::HouseOverhead,
-        Phase::Ended => CameraMode::SkipView,
+        Phase::Ended => CameraMode::GameOverOrbit,
     };
 
     // Only auto-switch if mode differs
@@ -109,6 +109,7 @@ pub fn camera_control_system(
             CameraMode::ThrowingView => 1.0,
             CameraMode::FollowStone => 0.3,
             CameraMode::HouseOverhead => 1.5, // Smooth transition to overhead
+            CameraMode::GameOverOrbit => 2.0, // Slower transition to orbit
         };
 
         debug!(
@@ -166,6 +167,18 @@ pub fn camera_control_system(
             camera_state.target_position =
                 Vec3::new(0.0, view_center_y, HOUSE_OVERHEAD_HEIGHT + 4.0);
             camera_state.target_look_at = Vec3::new(0.0, view_center_y, 0.0);
+        }
+        CameraMode::GameOverOrbit => {
+            // Orbit around the tee center
+            let center_y = tee_line_far();
+            camera_state.orbit_angle += ORBIT_SPEED * dt;
+
+            // Calculate position on orbit circle
+            let orbit_x = camera_state.orbit_angle.cos() * ORBIT_RADIUS;
+            let orbit_y = center_y + camera_state.orbit_angle.sin() * ORBIT_RADIUS;
+
+            camera_state.target_position = Vec3::new(orbit_x, orbit_y, ORBIT_HEIGHT);
+            camera_state.target_look_at = Vec3::new(0.0, center_y, 0.0);
         }
     }
 

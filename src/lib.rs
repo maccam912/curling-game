@@ -125,12 +125,19 @@ impl Plugin for CurlingPlugin {
                     systems::camera_control_system,
                     systems::update_ui,
                     systems::update_score_summary_panel,
+                    systems::update_game_over_panel,
                 ),
             );
 
         // Debug-only systems
         #[cfg(feature = "debug_mode")]
-        app.add_systems(Update, systems::handle_debug_quick_sim);
+        app.add_systems(
+            Update,
+            (
+                systems::handle_debug_quick_sim,
+                systems::handle_debug_skip_to_8th,
+            ),
+        );
     }
 }
 

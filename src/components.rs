@@ -109,6 +109,8 @@ pub enum CameraMode {
     FollowStone,
     /// Overhead view of house for watching shot result.
     HouseOverhead,
+    /// Orbiting camera for game over screen.
+    GameOverOrbit,
 }
 
 // ============================================================================
@@ -264,6 +266,11 @@ pub struct StatusText;
 #[derive(Component)]
 pub struct DebugQuickSimButton;
 
+/// Marker for the debug skip-to-8th-end button (only in debug_mode).
+#[cfg(feature = "debug_mode")]
+#[derive(Component)]
+pub struct DebugSkipTo8thEndButton;
+
 /// Marker for the confirm button's text child.
 #[derive(Component)]
 pub struct ConfirmButtonText;
@@ -335,3 +342,15 @@ pub struct ScoreSummaryText;
 /// Marker for the confirm score button.
 #[derive(Component)]
 pub struct ConfirmScoreButton;
+
+/// Marker for the game over panel.
+#[derive(Component)]
+pub struct GameOverPanel;
+
+/// Marker for the game over score breakdown text.
+#[derive(Component)]
+pub struct GameOverScoreBreakdown;
+
+/// Marker for the game over winner text.
+#[derive(Component)]
+pub struct GameOverWinnerText;
