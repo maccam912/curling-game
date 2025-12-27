@@ -249,7 +249,9 @@ pub fn handle_broom_drag(
     }
 
     // Check for drag end
-    if mouse_button.just_released(MouseButton::Left) || (is_pressed == false && touch_state.dragging) {
+    if mouse_button.just_released(MouseButton::Left)
+        || (is_pressed == false && touch_state.dragging)
+    {
         touch_state.dragging = false;
         touch_state.drag_start_time = 0.0;
         trace!("Broom drag ended");
@@ -264,65 +266,22 @@ pub fn handle_broom_drag(
 /// - Confirm/throw button
 pub fn handle_touch_input(
     mut state: ResMut<GameState>,
-    mut camera_state: ResMut<CameraState>,
     mut confirm_button: Query<
         (&Interaction, &mut BackgroundColor),
         (
             With<ConfirmButton>,
-            Without<CameraToggleButton>,
-            Without<CurlButton>,
-            Changed<Interaction>,
-        ),
-    >,
-    mut camera_button: Query<
-        (&Interaction, &mut BackgroundColor),
-        (
-            With<CameraToggleButton>,
-            Without<ConfirmButton>,
             Without<CurlButton>,
             Changed<Interaction>,
         ),
     >,
     mut curl_buttons: Query<
         (&Interaction, &CurlButton, &mut BackgroundColor),
-        (
-            Without<ConfirmButton>,
-            Without<CameraToggleButton>,
-            Changed<Interaction>,
-        ),
+        (Without<ConfirmButton>, Changed<Interaction>),
     >,
     mut commands: Commands,
     assets: Res<StoneAssets>,
     stones: Query<(Entity, &Transform, &Stone)>,
 ) {
-    // Handle camera toggle button
-    for (interaction, mut bg_color) in camera_button.iter_mut() {
-        match *interaction {
-            Interaction::Pressed => {
-                if state.phase == Phase::CallingShot {
-                    let new_mode = match camera_state.mode {
-                        CameraMode::SkipView => CameraMode::Overhead,
-                        CameraMode::Overhead => CameraMode::SkipView,
-                        _ => CameraMode::SkipView,
-                    };
-                    if new_mode != camera_state.mode {
-                        camera_state.mode = new_mode;
-                        camera_state.transition_progress = 0.0;
-                        camera_state.transition_duration = 0.5;
-                        debug!(mode = ?new_mode, "Camera mode toggled via button");
-                    }
-                }
-                *bg_color = BackgroundColor(Color::srgba(0.3, 0.3, 0.5, 0.9));
-            }
-            Interaction::Hovered => {
-                *bg_color = BackgroundColor(Color::srgba(0.3, 0.3, 0.4, 0.9));
-            }
-            Interaction::None => {
-                *bg_color = BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8));
-            }
-        }
-    }
-
     // Handle curl direction button clicks
     for (interaction, curl_btn, mut bg_color) in curl_buttons.iter_mut() {
         match *interaction {

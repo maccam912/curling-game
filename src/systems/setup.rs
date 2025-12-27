@@ -303,16 +303,21 @@ pub fn setup_ui(mut commands: Commands) {
                     Node {
                         width: Val::Percent(100.0),
                         flex_direction: FlexDirection::Row,
+                        flex_wrap: FlexWrap::Wrap,
                         justify_content: JustifyContent::SpaceBetween,
                         align_items: AlignItems::FlexStart,
+                        row_gap: Val::Px(8.0),
+                        column_gap: Val::Px(10.0),
                         ..default()
                     },
                 ))
                 .with_children(|hud| {
-                    // Left side: Score Panel and End Info
+                    // Left side: Score Panel and End Info - wraps on narrow screens
                     hud.spawn(Node {
                         flex_direction: FlexDirection::Row,
-                        column_gap: Val::Px(15.0),
+                        flex_wrap: FlexWrap::Wrap,
+                        column_gap: Val::Px(10.0),
+                        row_gap: Val::Px(8.0),
                         ..default()
                     })
                     .with_children(|left| {
@@ -552,166 +557,168 @@ pub fn setup_ui(mut commands: Commands) {
                     },
                 ))
                 .with_children(|bottom| {
-                    // Action buttons row
+                    // Controls container - wraps on narrow screens
+                    // Layout: [IN] [OUT] above [Confirm Shot] on narrow, side-by-side on wide
                     bottom
                         .spawn(Node {
-                            flex_direction: FlexDirection::Row,
-                            column_gap: Val::Px(20.0),
+                            flex_direction: FlexDirection::Column,
+                            align_items: AlignItems::Center,
+                            row_gap: Val::Px(10.0),
                             ..default()
                         })
-                        .with_children(|row| {
-                            // Camera toggle button
-                            row.spawn((
-                                CameraToggleButton,
-                                Button,
-                                Node {
-                                    width: Val::Px(60.0),
-                                    height: Val::Px(60.0),
+                        .with_children(|controls| {
+                            // Curl buttons row (IN / OUT)
+                            controls
+                                .spawn(Node {
+                                    flex_direction: FlexDirection::Row,
+                                    column_gap: Val::Px(10.0),
                                     justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
                                     ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8)),
-                                BorderRadius::all(Val::Px(10.0)),
-                            ))
-                            .with_children(|btn| {
-                                btn.spawn((
-                                    Text::new("VIEW"),
-                                    TextFont {
-                                        font_size: 16.0,
+                                })
+                                .with_children(|curl_row| {
+                                    // Curl IN button (selected by default)
+                                    curl_row
+                                        .spawn((
+                                            CurlButton(CurlDirection::InTurn),
+                                            Button,
+                                            Node {
+                                                width: Val::Px(60.0),
+                                                height: Val::Px(50.0),
+                                                justify_content: JustifyContent::Center,
+                                                align_items: AlignItems::Center,
+                                                ..default()
+                                            },
+                                            BackgroundColor(Color::srgba(0.3, 0.5, 0.3, 0.9)),
+                                            BorderRadius::all(Val::Px(10.0)),
+                                        ))
+                                        .with_children(|btn| {
+                                            btn.spawn((
+                                                Text::new("IN"),
+                                                TextFont {
+                                                    font_size: 18.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::WHITE),
+                                            ));
+                                        });
+
+                                    // Curl OUT button
+                                    curl_row
+                                        .spawn((
+                                            CurlButton(CurlDirection::OutTurn),
+                                            Button,
+                                            Node {
+                                                width: Val::Px(60.0),
+                                                height: Val::Px(50.0),
+                                                justify_content: JustifyContent::Center,
+                                                align_items: AlignItems::Center,
+                                                ..default()
+                                            },
+                                            BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8)),
+                                            BorderRadius::all(Val::Px(10.0)),
+                                        ))
+                                        .with_children(|btn| {
+                                            btn.spawn((
+                                                Text::new("OUT"),
+                                                TextFont {
+                                                    font_size: 18.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::WHITE),
+                                            ));
+                                        });
+                                });
+
+                            // Confirm/throw button - full width, acts as minimum width anchor
+                            controls
+                                .spawn((
+                                    ConfirmButton,
+                                    Button,
+                                    Node {
+                                        width: Val::Px(180.0),
+                                        min_width: Val::Px(140.0),
+                                        height: Val::Px(55.0),
+                                        justify_content: JustifyContent::Center,
+                                        align_items: AlignItems::Center,
                                         ..default()
                                     },
-                                    TextColor(Color::WHITE),
-                                ));
-                            });
+                                    BackgroundColor(Color::srgba(0.2, 0.6, 0.3, 0.9)),
+                                    BorderRadius::all(Val::Px(10.0)),
+                                ))
+                                .with_children(|btn| {
+                                    btn.spawn((
+                                        ConfirmButtonText,
+                                        Text::new("Confirm Shot"),
+                                        TextFont {
+                                            font_size: 20.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::WHITE),
+                                    ));
+                                });
 
-                            // Curl IN button (selected by default)
-                            row.spawn((
-                                CurlButton(CurlDirection::InTurn),
-                                Button,
-                                Node {
-                                    width: Val::Px(60.0),
-                                    height: Val::Px(60.0),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.3, 0.5, 0.3, 0.9)),
-                                BorderRadius::all(Val::Px(10.0)),
-                            ))
-                            .with_children(|btn| {
-                                btn.spawn((
-                                    Text::new("IN"),
-                                    TextFont {
-                                        font_size: 18.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::WHITE),
-                                ));
-                            });
-
-                            // Curl OUT button
-                            row.spawn((
-                                CurlButton(CurlDirection::OutTurn),
-                                Button,
-                                Node {
-                                    width: Val::Px(60.0),
-                                    height: Val::Px(60.0),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.2, 0.2, 0.3, 0.8)),
-                                BorderRadius::all(Val::Px(10.0)),
-                            ))
-                            .with_children(|btn| {
-                                btn.spawn((
-                                    Text::new("OUT"),
-                                    TextFont {
-                                        font_size: 18.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::WHITE),
-                                ));
-                            });
-
-                            // Confirm/throw button
-                            row.spawn((
-                                ConfirmButton,
-                                Button,
-                                Node {
-                                    width: Val::Px(200.0),
-                                    height: Val::Px(60.0),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.2, 0.6, 0.3, 0.9)),
-                                BorderRadius::all(Val::Px(10.0)),
-                            ))
-                            .with_children(|btn| {
-                                btn.spawn((
-                                    ConfirmButtonText,
-                                    Text::new("Confirm Shot"),
-                                    TextFont {
-                                        font_size: 22.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::WHITE),
-                                ));
-                            });
-
-                            // Debug quick-simulate button (only in debug_mode)
+                            // Debug buttons row (only in debug_mode)
                             #[cfg(feature = "debug_mode")]
-                            row.spawn((
-                                DebugQuickSimButton,
-                                Button,
-                                Node {
-                                    width: Val::Px(100.0),
-                                    height: Val::Px(60.0),
+                            controls
+                                .spawn(Node {
+                                    flex_direction: FlexDirection::Row,
+                                    column_gap: Val::Px(10.0),
                                     justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
                                     ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.6, 0.3, 0.1, 0.9)),
-                                BorderRadius::all(Val::Px(10.0)),
-                            ))
-                            .with_children(|btn| {
-                                btn.spawn((
-                                    Text::new("QUICK\nSIM"),
-                                    TextFont {
-                                        font_size: 14.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::WHITE),
-                                ));
-                            });
+                                })
+                                .with_children(|debug_row| {
+                                    // Debug quick-simulate button
+                                    debug_row
+                                        .spawn((
+                                            DebugQuickSimButton,
+                                            Button,
+                                            Node {
+                                                width: Val::Px(80.0),
+                                                height: Val::Px(45.0),
+                                                justify_content: JustifyContent::Center,
+                                                align_items: AlignItems::Center,
+                                                ..default()
+                                            },
+                                            BackgroundColor(Color::srgba(0.6, 0.3, 0.1, 0.9)),
+                                            BorderRadius::all(Val::Px(8.0)),
+                                        ))
+                                        .with_children(|btn| {
+                                            btn.spawn((
+                                                Text::new("QUICK\nSIM"),
+                                                TextFont {
+                                                    font_size: 12.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::WHITE),
+                                            ));
+                                        });
 
-                            // Debug skip-to-8th-end button (only in debug_mode)
-                            #[cfg(feature = "debug_mode")]
-                            row.spawn((
-                                DebugSkipTo8thEndButton,
-                                Button,
-                                Node {
-                                    width: Val::Px(80.0),
-                                    height: Val::Px(60.0),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.5, 0.2, 0.5, 0.9)),
-                                BorderRadius::all(Val::Px(10.0)),
-                            ))
-                            .with_children(|btn| {
-                                btn.spawn((
-                                    Text::new("END\n8"),
-                                    TextFont {
-                                        font_size: 14.0,
-                                        ..default()
-                                    },
-                                    TextColor(Color::WHITE),
-                                ));
-                            });
+                                    // Debug skip-to-8th-end button
+                                    debug_row
+                                        .spawn((
+                                            DebugSkipTo8thEndButton,
+                                            Button,
+                                            Node {
+                                                width: Val::Px(60.0),
+                                                height: Val::Px(45.0),
+                                                justify_content: JustifyContent::Center,
+                                                align_items: AlignItems::Center,
+                                                ..default()
+                                            },
+                                            BackgroundColor(Color::srgba(0.5, 0.2, 0.5, 0.9)),
+                                            BorderRadius::all(Val::Px(8.0)),
+                                        ))
+                                        .with_children(|btn| {
+                                            btn.spawn((
+                                                Text::new("END\n8"),
+                                                TextFont {
+                                                    font_size: 12.0,
+                                                    ..default()
+                                                },
+                                                TextColor(Color::WHITE),
+                                            ));
+                                        });
+                                });
                         });
                 });
         });
