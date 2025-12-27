@@ -3,11 +3,12 @@
 //! Systems that control camera positioning and transitions.
 
 use bevy::prelude::*;
+use bevy_rapier2d::prelude::*;
 use tracing::{debug, trace};
 
 use crate::components::*;
 use crate::constants::*;
-use crate::helpers::hog_line_far;
+use crate::helpers::{back_line_far, hog_line_far};
 use crate::resources::*;
 
 /// Controls camera position and transitions based on game phase.
@@ -25,13 +26,29 @@ pub fn camera_control_system(
     state: Res<GameState>,
     mut camera_state: ResMut<CameraState>,
     mut camera_query: Query<&mut Transform, With<MainCamera>>,
-    thrown_stone_query: Query<&Transform, (With<ThrowingStone>, Without<MainCamera>)>,
+    stone_query: Query<(Entity, &Transform, &Velocity), (With<Stone>, Without<MainCamera>)>,
 ) {
     let dt = time.delta_secs();
 
+    // Find the currently thrown stone or any moving stone behind the far hog line
+    // Priority: 1) The explicitly thrown stone, 2) Any moving stone
+    let tracked_stone_transform = if let Some(thrown_entity) = state.thrown_stone {
+        stone_query
+            .iter()
+            .find(|(e, _, _)| *e == thrown_entity)
+            .map(|(_, t, _)| t)
+    } else {
+        // Fallback: find any moving stone (velocity > threshold)
+        stone_query
+            .iter()
+            .filter(|(_, _, v)| v.linvel.length() > 0.1)
+            .map(|(_, t, _)| t)
+            .next()
+    };
+
     // Check if stone crossed far hog line during FollowStone phase
     if camera_state.mode == CameraMode::FollowStone {
-        if let Some(stone_transform) = thrown_stone_query.iter().next() {
+        if let Some(stone_transform) = tracked_stone_transform {
             let stone_y = stone_transform.translation.y;
             if stone_y > hog_line_far() && !camera_state.stone_crossed_hog {
                 camera_state.stone_crossed_hog = true;
@@ -125,7 +142,7 @@ pub fn camera_control_system(
                 Vec3::new(state.broom_position.x, state.broom_position.y, 0.0);
         }
         CameraMode::FollowStone => {
-            if let Some(stone_transform) = thrown_stone_query.iter().next() {
+            if let Some(stone_transform) = tracked_stone_transform {
                 let stone_pos = stone_transform.translation;
                 // Camera behind stone at dynamically rising height
                 camera_state.target_position = Vec3::new(
@@ -137,9 +154,12 @@ pub fn camera_control_system(
             }
         }
         CameraMode::HouseOverhead => {
-            // Overhead view of the house for watching final result
-            camera_state.target_position = Vec3::new(0.0, TEE_FROM_CENTER, HOUSE_OVERHEAD_HEIGHT);
-            camera_state.target_look_at = Vec3::new(0.0, TEE_FROM_CENTER, 0.0);
+            // Overhead view centered between hog line and back line to show guards and house
+            let view_center_y = (hog_line_far() + back_line_far()) * 0.5;
+            // Increase height to zoom out and show more area
+            camera_state.target_position =
+                Vec3::new(0.0, view_center_y, HOUSE_OVERHEAD_HEIGHT + 4.0);
+            camera_state.target_look_at = Vec3::new(0.0, view_center_y, 0.0);
         }
     }
 

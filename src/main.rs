@@ -15,6 +15,10 @@ fn main() {
             primary_window: Some(Window {
                 title: "Curling - Pass and Play".to_string(),
                 resolution: (1400, 900).into(),
+                // Fit canvas to parent element for responsive web sizing
+                fit_canvas_to_parent: true,
+                // Prevent default browser actions for better mobile experience
+                prevent_default_event_handling: true,
                 ..default()
             }),
             ..default()
