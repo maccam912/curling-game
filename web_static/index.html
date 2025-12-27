@@ -2,8 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="description" content="A 3D curling game built with Bevy and Rust">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
     <title>Curling Game</title>
     <style>
         * {
@@ -11,26 +13,54 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         html, body {
             width: 100%;
-            height: 100%;
+            /* Use dvh (dynamic viewport height) to account for mobile browser chrome */
+            height: 100dvh;
+            height: 100vh; /* Fallback for browsers that don't support dvh */
             overflow: hidden;
             background: #1a1a2e;
+            /* Prevent overscroll bounce on iOS */
+            overscroll-behavior: none;
+            -webkit-overflow-scrolling: touch;
+            /* Account for safe area insets (notches, etc.) */
+            padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
         }
 
         body {
             display: flex;
             align-items: center;
             justify-content: center;
+            /* Prevent pull-to-refresh on mobile */
+            touch-action: none;
         }
 
         canvas {
             display: block;
+            /* Use dynamic viewport units for mobile browser chrome handling */
+            max-width: 100dvw;
+            max-height: 100dvh;
+            width: 100dvw;
+            height: 100dvh;
+            /* Fallback for browsers without dvh support */
             max-width: 100vw;
             max-height: 100vh;
-            width: 100vw;
-            height: 100vh;
+            /* Prevent context menu on long press */
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        /* Fallback using JavaScript-set CSS variables for older browsers */
+        @supports not (height: 100dvh) {
+            html, body {
+                height: calc(var(--vh, 1vh) * 100);
+            }
+            canvas {
+                max-height: calc(var(--vh, 1vh) * 100);
+                height: calc(var(--vh, 1vh) * 100);
+            }
         }
         
         #loading {
@@ -115,11 +145,16 @@
 
         function scaleCanvas(canvas) {
             const devicePixelRatio = window.devicePixelRatio || 1;
-            const width = window.innerWidth;
-            const height = window.innerHeight;
+            // Use visualViewport if available (accounts for mobile browser chrome)
+            const vv = window.visualViewport;
+            const width = vv ? vv.width : window.innerWidth;
+            const height = vv ? vv.height : window.innerHeight;
 
-            canvas.style.width = '100vw';
-            canvas.style.height = '100vh';
+            // Set CSS custom property for fallback in older browsers
+            document.documentElement.style.setProperty('--vh', `${height * 0.01}px`);
+
+            canvas.style.width = `${width}px`;
+            canvas.style.height = `${height}px`;
 
             canvas.width = Math.round(width * devicePixelRatio);
             canvas.height = Math.round(height * devicePixelRatio);
@@ -131,6 +166,10 @@
                 const canvas = await waitForCanvas();
                 scaleCanvas(canvas);
                 window.addEventListener('resize', () => scaleCanvas(canvas));
+                // Also listen for visualViewport resize (mobile browser chrome changes)
+                if (window.visualViewport) {
+                    window.visualViewport.addEventListener('resize', () => scaleCanvas(canvas));
+                }
                 // Hide loading screen once WASM is initialized
                 document.getElementById('loading').classList.add('hidden');
             } catch (error) {
