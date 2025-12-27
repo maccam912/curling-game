@@ -18,11 +18,19 @@
             overflow: hidden;
             background: #1a1a2e;
         }
-        
+
+        body {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         canvas {
             display: block;
-            width: 100%;
-            height: 100%;
+            max-width: 100vw;
+            max-height: 100vh;
+            width: 100vw;
+            height: 100vh;
         }
         
         #loading {
@@ -84,10 +92,45 @@
     
     <script type="module">
         import init from './curling-game.js';
-        
+
+        function waitForCanvas() {
+            return new Promise((resolve) => {
+                const existingCanvas = document.querySelector('canvas');
+                if (existingCanvas) {
+                    resolve(existingCanvas);
+                    return;
+                }
+
+                const observer = new MutationObserver(() => {
+                    const canvas = document.querySelector('canvas');
+                    if (canvas) {
+                        observer.disconnect();
+                        resolve(canvas);
+                    }
+                });
+
+                observer.observe(document.body, { childList: true, subtree: true });
+            });
+        }
+
+        function scaleCanvas(canvas) {
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+
+            canvas.width = Math.round(width * devicePixelRatio);
+            canvas.height = Math.round(height * devicePixelRatio);
+        }
+
         async function run() {
             try {
                 await init();
+                const canvas = await waitForCanvas();
+                scaleCanvas(canvas);
+                window.addEventListener('resize', () => scaleCanvas(canvas));
                 // Hide loading screen once WASM is initialized
                 document.getElementById('loading').classList.add('hidden');
             } catch (error) {
