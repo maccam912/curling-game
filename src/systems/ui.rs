@@ -27,16 +27,16 @@ pub fn update_window_title(mut windows: Query<&mut Window>, state: Res<GameState
 
     let title = if state.phase == Phase::Ended {
         format!(
-            "Curling - FINAL: Red {} - Blue {}",
-            state.red_score, state.blue_score
+            "Curling - FINAL: Team 1 {} - Team 2 {}",
+            state.team1_score, state.team2_score
         )
     } else {
         format!(
-            "Curling - End {}/{} | Red {} - Blue {} | Shot {}/{} | {} | {}",
+            "Curling - End {}/{} | Team 1 {} - Team 2 {} | Shot {}/{} | {} | {}",
             state.current_end,
             state.total_ends,
-            state.red_score,
-            state.blue_score,
+            state.team1_score,
+            state.team2_score,
             state.shot_index + 1,
             TOTAL_SHOTS,
             state.current_team().name(),
@@ -66,7 +66,8 @@ pub fn update_broom_visual(
 /// Updates all UI elements based on current game state.
 ///
 /// Updates:
-/// - Status text (shot number, team, weight, angle, phase)
+/// - HUD panels (scores, end info, hammer, shot counter, team turn, phase)
+/// - Legacy status text (for window title compatibility)
 /// - Confirm button text (changes based on phase)
 /// - Curl button highlighting (shows selected direction)
 pub fn update_ui(
@@ -75,8 +76,177 @@ pub fn update_ui(
     confirm_query: Query<&Children, With<ConfirmButton>>,
     mut text_query: Query<&mut Text, Without<StatusText>>,
     mut curl_buttons: Query<(&CurlButton, &mut BackgroundColor), Without<ConfirmButton>>,
+    // HUD element queries
+    mut team1_score_query: Query<
+        &mut Text,
+        (
+            With<Team1ScoreText>,
+            Without<StatusText>,
+            Without<Team2ScoreText>,
+        ),
+    >,
+    mut team2_score_query: Query<
+        &mut Text,
+        (
+            With<Team2ScoreText>,
+            Without<StatusText>,
+            Without<Team1ScoreText>,
+        ),
+    >,
+    mut end_info_query: Query<
+        &mut Text,
+        (
+            With<EndInfoText>,
+            Without<StatusText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+        ),
+    >,
+    mut shot_info_query: Query<
+        &mut Text,
+        (
+            With<ShotInfoText>,
+            Without<StatusText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+        ),
+    >,
+    mut shots_remaining_query: Query<
+        &mut Text,
+        (
+            With<ShotsRemainingText>,
+            Without<StatusText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotInfoText>,
+        ),
+    >,
+    mut team_turn_query: Query<
+        (&mut Text, &mut TextColor),
+        (
+            With<TeamTurnIndicator>,
+            Without<StatusText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotInfoText>,
+            Without<ShotsRemainingText>,
+        ),
+    >,
+    mut phase_query: Query<
+        &mut Text,
+        (
+            With<PhaseIndicator>,
+            Without<StatusText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotInfoText>,
+            Without<ShotsRemainingText>,
+            Without<TeamTurnIndicator>,
+        ),
+    >,
+    hammer_query: Query<&Children, With<HammerIndicator>>,
+    mut hammer_text_query: Query<
+        &mut Text,
+        (
+            Without<StatusText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotInfoText>,
+            Without<ShotsRemainingText>,
+            Without<TeamTurnIndicator>,
+            Without<PhaseIndicator>,
+        ),
+    >,
 ) {
-    // Update status text
+    // --- Update HUD Elements ---
+
+    // Update Team 1 score
+    for mut text in team1_score_query.iter_mut() {
+        **text = state.team1_score.to_string();
+    }
+
+    // Update Team 2 score
+    for mut text in team2_score_query.iter_mut() {
+        **text = state.team2_score.to_string();
+    }
+
+    // Update End Info
+    for mut text in end_info_query.iter_mut() {
+        if state.phase == Phase::Ended {
+            **text = "FINAL".to_string();
+        } else {
+            **text = format!("END {}/{}", state.current_end, state.total_ends);
+        }
+    }
+
+    // Update Shot Info
+    for mut text in shot_info_query.iter_mut() {
+        if state.phase == Phase::Ended {
+            **text = "Game Over".to_string();
+        } else {
+            **text = format!("Shot: {}/{}", state.shot_index + 1, TOTAL_SHOTS);
+        }
+    }
+
+    // Update Shots Remaining
+    for mut text in shots_remaining_query.iter_mut() {
+        let remaining = TOTAL_SHOTS.saturating_sub(state.shot_index);
+        if state.phase == Phase::Ended {
+            **text = "".to_string();
+        } else {
+            **text = format!("Remaining: {}", remaining);
+        }
+    }
+
+    // Update Team Turn Indicator
+    for (mut text, mut color) in team_turn_query.iter_mut() {
+        let current_team = state.current_team();
+        if state.phase == Phase::Ended {
+            // Show winner
+            if state.team1_score > state.team2_score {
+                **text = "Team 1 Wins!".to_string();
+                *color = TextColor(Team::One.color());
+            } else if state.team2_score > state.team1_score {
+                **text = "Team 2 Wins!".to_string();
+                *color = TextColor(Team::Two.color());
+            } else {
+                **text = "Tie Game!".to_string();
+                *color = TextColor(Color::WHITE);
+            }
+        } else {
+            **text = format!("{}'s Turn", current_team.name());
+            *color = TextColor(current_team.color());
+        }
+    }
+
+    // Update Phase Indicator
+    for mut text in phase_query.iter_mut() {
+        let phase_str = match state.phase {
+            Phase::CallingShot => "Calling Shot",
+            Phase::Aiming => "Ready to Throw",
+            Phase::StoneMoving => "Stone Moving...",
+            Phase::Resolve => "Resolving...",
+            Phase::Ended => "",
+        };
+        **text = phase_str.to_string();
+    }
+
+    // Update Hammer Indicator text
+    let hammer_team = state.first_throw_team.opponent();
+    for children in hammer_query.iter() {
+        for child in children.iter() {
+            if let Ok(mut text) = hammer_text_query.get_mut(child) {
+                **text = format!("{} HAMMER", hammer_team.name().to_uppercase());
+            }
+        }
+    }
+
+    // --- Legacy Status Text (kept for window title) ---
     if let Some(mut status) = status_query.iter_mut().next() {
         let phase_str = match state.phase {
             Phase::CallingShot => "Drag broom to aim",
@@ -86,19 +256,17 @@ pub fn update_ui(
             Phase::Ended => "Game Over",
         };
 
-        let hammer_team = state.first_throw_team.opponent();
-
         if state.phase == Phase::Ended {
-            let winner = if state.red_score > state.blue_score {
-                "Red Wins!"
-            } else if state.blue_score > state.red_score {
-                "Blue Wins!"
+            let winner = if state.team1_score > state.team2_score {
+                "Team 1 Wins!"
+            } else if state.team2_score > state.team1_score {
+                "Team 2 Wins!"
             } else {
                 "Tie Game!"
             };
             **status = format!(
-                "FINAL: Red {} - Blue {} | {}",
-                state.red_score, state.blue_score, winner
+                "FINAL: Team 1 {} - Team 2 {} | {}",
+                state.team1_score, state.team2_score, winner
             );
         } else {
             **status = format!(

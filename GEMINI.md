@@ -57,8 +57,8 @@ src/
 ## Development Conventions
 
 *   **Architecture:** The project follows the Bevy ECS (Entity Component System) pattern.
-    *   **Components** (`components.rs`): `Stone`, `ThrowingStone`, `Broom`, `MainCamera`, UI markers, and enums (`Team`, `Phase`, `CameraMode`, `ShotType`, `CurlDirection`).
-    *   **Resources** (`resources.rs`): `GameState` (manages turns, shot parameters, and game phases), `CameraState`, `TouchState`, `StoneAssets`.
+    *   **Components** (`components.rs`): `Stone`, `ThrowingStone`, `Broom`, `MainCamera`, UI markers, and enums (`Team` (One/Two with customizable colors), `Phase`, `CameraMode`, `ShotType`, `CurlDirection`).
+    *   **Resources** (`resources.rs`): `GameState` (manages turns, shot parameters, and game phases with `team1_score`/`team2_score`), `CameraState`, `TouchState`, `StoneAssets`.
     *   **Systems** (`systems/`): Logic is organized by functionality:
         - `setup.rs`: Scene and UI initialization
         - `input.rs`: Input handling (`handle_calling_input`, `handle_aiming_input`, `handle_broom_drag`, `handle_touch_input`)

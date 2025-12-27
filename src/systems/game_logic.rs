@@ -156,27 +156,27 @@ pub fn resolve_shot(
             })
             .collect();
 
-        let (red_points, blue_points) = score_end(&stone_positions);
-        state.red_score += red_points;
-        state.blue_score += blue_points;
+        let (team1_points, team2_points) = score_end(&stone_positions);
+        state.team1_score += team1_points;
+        state.team2_score += team2_points;
 
         info!(
             end = state.current_end,
-            red_points = red_points,
-            blue_points = blue_points,
-            red_total = state.red_score,
-            blue_total = state.blue_score,
+            team1_points = team1_points,
+            team2_points = team2_points,
+            team1_total = state.team1_score,
+            team2_total = state.team2_score,
             "End scored"
         );
 
         // Determine who throws first next end (scoring team throws first = loses hammer)
         // If blank end (no score), hammer stays with same team
-        if red_points > 0 {
-            state.first_throw_team = Team::Red;
-            debug!("Red scored, Blue gets hammer next end");
-        } else if blue_points > 0 {
-            state.first_throw_team = Team::Blue;
-            debug!("Blue scored, Red gets hammer next end");
+        if team1_points > 0 {
+            state.first_throw_team = Team::One;
+            debug!("Team 1 scored, Team 2 gets hammer next end");
+        } else if team2_points > 0 {
+            state.first_throw_team = Team::Two;
+            debug!("Team 2 scored, Team 1 gets hammer next end");
         } else {
             debug!(
                 "Blank end, hammer stays with {:?}",
@@ -193,16 +193,16 @@ pub fn resolve_shot(
         state.current_end += 1;
         if state.current_end > state.total_ends {
             state.phase = Phase::Ended;
-            let winner = if state.red_score > state.blue_score {
-                "Red"
-            } else if state.blue_score > state.red_score {
-                "Blue"
+            let winner = if state.team1_score > state.team2_score {
+                "Team 1"
+            } else if state.team2_score > state.team1_score {
+                "Team 2"
             } else {
                 "Tie"
             };
             info!(
-                red_final = state.red_score,
-                blue_final = state.blue_score,
+                team1_final = state.team1_score,
+                team2_final = state.team2_score,
                 winner = winner,
                 "Game complete!"
             );

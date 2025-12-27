@@ -175,8 +175,8 @@ pub fn spawn_stone(
 
     // Spawn visual representation based on team using appropriate GLB model
     let scene = match team {
-        Team::Red => assets.red_scene.clone(),
-        Team::Blue => assets.blue_scene.clone(),
+        Team::One => assets.red_scene.clone(),
+        Team::Two => assets.yellow_scene.clone(),
     };
     // Apply model scale and z-offset from constants
     let model_transform = Transform::from_translation(Vec3::new(0.0, 0.0, MODEL_Z_OFFSET))
@@ -377,7 +377,7 @@ pub fn score_end(stones: &[(Team, Vec2)]) -> (u32, u32) {
         .count() as u32;
 
     match scoring_team {
-        Team::Red => (points, 0),
-        Team::Blue => (0, points),
+        Team::One => (points, 0),
+        Team::Two => (0, points),
     }
 }

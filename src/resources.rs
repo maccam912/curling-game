@@ -48,10 +48,10 @@ pub struct GameState {
     pub curl_direction: CurlDirection,
     /// Current end number (1-based).
     pub current_end: u8,
-    /// Red team's cumulative score.
-    pub red_score: u32,
-    /// Blue team's cumulative score.
-    pub blue_score: u32,
+    /// Team 1's cumulative score.
+    pub team1_score: u32,
+    /// Team 2's cumulative score.
+    pub team2_score: u32,
     /// Team that throws first this end (opponent has hammer).
     pub first_throw_team: Team,
     /// Total number of ends in the game.
@@ -74,9 +74,9 @@ impl Default for GameState {
             snapshot: None,
             curl_direction: CurlDirection::default(),
             current_end: 1,
-            red_score: 0,
-            blue_score: 0,
-            first_throw_team: Team::Red, // Will be randomized at startup
+            team1_score: 0,
+            team2_score: 0,
+            first_throw_team: Team::One, // Will be randomized at startup
             total_ends: 8,
         }
     }
@@ -191,10 +191,10 @@ pub struct TouchState {
 /// Cached mesh and material handles for spawning stones.
 #[derive(Resource)]
 pub struct StoneAssets {
-    /// Scene handle for red team stones (loaded from GLB).
+    /// Scene handle for Team 1 stones (loaded from GLB). Default: red.
     pub red_scene: Handle<Scene>,
-    /// Scene handle for blue team stones (loaded from GLB).
-    pub blue_scene: Handle<Scene>,
+    /// Scene handle for Team 2 stones (loaded from GLB). Default: yellow.
+    pub yellow_scene: Handle<Scene>,
     /// Debug mesh (cylinder) showing physics collider bounds.
     #[cfg(feature = "debug_mode")]
     pub debug_mesh: Handle<Mesh>,

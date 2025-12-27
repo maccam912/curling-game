@@ -20,52 +20,52 @@ use crate::constants::CURL_ANGULAR_VELOCITY;
 /// Represents one of the two teams in curling.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Team {
-    /// The red team (throws first on even-numbered shots).
-    Red,
-    /// The blue team (throws on odd-numbered shots).
-    Blue,
+    /// Team 1 (throws first on even-numbered shots). Default color: red.
+    One,
+    /// Team 2 (throws on odd-numbered shots). Default color: yellow.
+    Two,
 }
 
 impl Team {
     /// Determines which team throws based on the shot index (0-15).
     ///
-    /// Red throws on even shots (0, 2, 4, ...), Blue on odd (1, 3, 5, ...).
+    /// Team 1 throws on even shots (0, 2, 4, ...), Team 2 on odd (1, 3, 5, ...).
     ///
     /// # Example
     /// ```
     /// use curling_game::components::Team;
-    /// assert_eq!(Team::from_shot_index(0), Team::Red);
-    /// assert_eq!(Team::from_shot_index(1), Team::Blue);
+    /// assert_eq!(Team::from_shot_index(0), Team::One);
+    /// assert_eq!(Team::from_shot_index(1), Team::Two);
     /// ```
     pub fn from_shot_index(index: u8) -> Self {
         if index.is_multiple_of(2) {
-            Team::Red
+            Team::One
         } else {
-            Team::Blue
+            Team::Two
         }
     }
 
     /// Returns the team's display color.
     pub fn color(self) -> Color {
         match self {
-            Team::Red => Color::srgb(0.85, 0.15, 0.15),
-            Team::Blue => Color::srgb(0.15, 0.3, 0.85),
+            Team::One => Color::srgb(0.85, 0.15, 0.15), // Red
+            Team::Two => Color::srgb(0.95, 0.85, 0.15), // Yellow
         }
     }
 
     /// Returns the team's display name.
     pub fn name(self) -> &'static str {
         match self {
-            Team::Red => "Red",
-            Team::Blue => "Blue",
+            Team::One => "Team 1",
+            Team::Two => "Team 2",
         }
     }
 
     /// Returns the opposing team.
     pub fn opponent(self) -> Team {
         match self {
-            Team::Red => Team::Blue,
-            Team::Blue => Team::Red,
+            Team::One => Team::Two,
+            Team::Two => Team::One,
         }
     }
 }
@@ -283,3 +283,47 @@ pub enum TuningAdjust {
     Increase,
     Decrease,
 }
+
+// ============================================================================
+// HUD COMPONENTS
+// ============================================================================
+
+/// Marker for the main HUD panel container.
+#[derive(Component)]
+pub struct HudPanel;
+
+/// Marker for the score display panel.
+#[derive(Component)]
+pub struct ScorePanel;
+
+/// Marker for Team 1's score text.
+#[derive(Component)]
+pub struct Team1ScoreText;
+
+/// Marker for Team 2's score text.
+#[derive(Component)]
+pub struct Team2ScoreText;
+
+/// Marker for the current end indicator text.
+#[derive(Component)]
+pub struct EndInfoText;
+
+/// Marker for the shot counter text.
+#[derive(Component)]
+pub struct ShotInfoText;
+
+/// Marker for the shots remaining text.
+#[derive(Component)]
+pub struct ShotsRemainingText;
+
+/// Marker for the hammer indicator.
+#[derive(Component)]
+pub struct HammerIndicator;
+
+/// Marker for the team turn indicator.
+#[derive(Component)]
+pub struct TeamTurnIndicator;
+
+/// Marker for the game phase indicator.
+#[derive(Component)]
+pub struct PhaseIndicator;

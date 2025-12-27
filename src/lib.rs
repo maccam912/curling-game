@@ -178,15 +178,15 @@ mod tests {
 
     #[test]
     fn team_alternates_by_shot_index() {
-        assert_eq!(Team::from_shot_index(0), Team::Red);
-        assert_eq!(Team::from_shot_index(1), Team::Blue);
-        assert_eq!(Team::from_shot_index(2), Team::Red);
+        assert_eq!(Team::from_shot_index(0), Team::One);
+        assert_eq!(Team::from_shot_index(1), Team::Two);
+        assert_eq!(Team::from_shot_index(2), Team::One);
     }
 
     #[test]
     fn team_alternates_all_16_shots() {
         for i in 0..16u8 {
-            let expected = if i % 2 == 0 { Team::Red } else { Team::Blue };
+            let expected = if i % 2 == 0 { Team::One } else { Team::Two };
             assert_eq!(
                 Team::from_shot_index(i),
                 expected,
@@ -199,13 +199,13 @@ mod tests {
 
     #[test]
     fn team_colors_are_distinct() {
-        assert_ne!(Team::Red.color(), Team::Blue.color());
+        assert_ne!(Team::One.color(), Team::Two.color());
     }
 
     #[test]
     fn team_names_are_correct() {
-        assert_eq!(Team::Red.name(), "Red");
-        assert_eq!(Team::Blue.name(), "Blue");
+        assert_eq!(Team::One.name(), "Team 1");
+        assert_eq!(Team::Two.name(), "Team 2");
     }
 
     // ============ SHOT TYPE TESTS ============
@@ -748,13 +748,13 @@ mod tests {
 
     #[test]
     fn test_stone_snapshot_creation() {
-        let snap = test_stone_snapshot(Team::Red, 0.0, helpers::hog_line_far() + 1.0);
-        assert_eq!(snap.team, Team::Red);
+        let snap = test_stone_snapshot(Team::One, 0.0, helpers::hog_line_far() + 1.0);
+        assert_eq!(snap.team, Team::One);
         assert_eq!(snap.position.x, 0.0);
         assert!(snap.in_fgz);
 
-        let snap_in_house = test_stone_snapshot(Team::Blue, 0.0, helpers::tee_line_far());
-        assert_eq!(snap_in_house.team, Team::Blue);
+        let snap_in_house = test_stone_snapshot(Team::Two, 0.0, helpers::tee_line_far());
+        assert_eq!(snap_in_house.team, Team::Two);
         assert!(!snap_in_house.in_fgz);
     }
 
