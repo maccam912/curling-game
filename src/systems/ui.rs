@@ -22,6 +22,7 @@ pub fn update_window_title(mut windows: Query<&mut Window>, state: Res<GameState
         Phase::Aiming => "Aiming (Space to throw)",
         Phase::StoneMoving => "Stones moving",
         Phase::Resolve => "Resolving shot",
+        Phase::ShowingScore => "End Score",
         Phase::Ended => "Game Over",
     };
 
@@ -73,72 +74,10 @@ pub fn update_broom_visual(
 pub fn update_ui(
     state: Res<GameState>,
     mut status_query: Query<&mut Text, With<StatusText>>,
-    confirm_query: Query<&Children, With<ConfirmButton>>,
-    mut text_query: Query<&mut Text, Without<StatusText>>,
-    mut curl_buttons: Query<(&CurlButton, &mut BackgroundColor), Without<ConfirmButton>>,
-    // HUD element queries
-    mut team1_score_query: Query<
+    mut confirm_text_query: Query<
         &mut Text,
         (
-            With<Team1ScoreText>,
-            Without<StatusText>,
-            Without<Team2ScoreText>,
-        ),
-    >,
-    mut team2_score_query: Query<
-        &mut Text,
-        (
-            With<Team2ScoreText>,
-            Without<StatusText>,
-            Without<Team1ScoreText>,
-        ),
-    >,
-    mut end_info_query: Query<
-        &mut Text,
-        (
-            With<EndInfoText>,
-            Without<StatusText>,
-            Without<Team1ScoreText>,
-            Without<Team2ScoreText>,
-        ),
-    >,
-    mut shot_info_query: Query<
-        &mut Text,
-        (
-            With<ShotInfoText>,
-            Without<StatusText>,
-            Without<Team1ScoreText>,
-            Without<Team2ScoreText>,
-            Without<EndInfoText>,
-        ),
-    >,
-    mut shots_remaining_query: Query<
-        &mut Text,
-        (
-            With<ShotsRemainingText>,
-            Without<StatusText>,
-            Without<Team1ScoreText>,
-            Without<Team2ScoreText>,
-            Without<EndInfoText>,
-            Without<ShotInfoText>,
-        ),
-    >,
-    mut team_turn_query: Query<
-        (&mut Text, &mut TextColor),
-        (
-            With<TeamTurnIndicator>,
-            Without<StatusText>,
-            Without<Team1ScoreText>,
-            Without<Team2ScoreText>,
-            Without<EndInfoText>,
-            Without<ShotInfoText>,
-            Without<ShotsRemainingText>,
-        ),
-    >,
-    mut phase_query: Query<
-        &mut Text,
-        (
-            With<PhaseIndicator>,
+            With<ConfirmButtonText>,
             Without<StatusText>,
             Without<Team1ScoreText>,
             Without<Team2ScoreText>,
@@ -146,13 +85,123 @@ pub fn update_ui(
             Without<ShotInfoText>,
             Without<ShotsRemainingText>,
             Without<TeamTurnIndicator>,
+            Without<PhaseIndicator>,
+            Without<HammerText>,
         ),
     >,
-    hammer_query: Query<&Children, With<HammerIndicator>>,
+    mut curl_buttons: Query<(&CurlButton, &mut BackgroundColor), Without<ConfirmButton>>,
+    // HUD element queries - each needs complete mutual exclusion
+    mut team1_score_query: Query<
+        &mut Text,
+        (
+            With<Team1ScoreText>,
+            Without<StatusText>,
+            Without<ConfirmButtonText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotInfoText>,
+            Without<ShotsRemainingText>,
+            Without<TeamTurnIndicator>,
+            Without<PhaseIndicator>,
+            Without<HammerText>,
+        ),
+    >,
+    mut team2_score_query: Query<
+        &mut Text,
+        (
+            With<Team2ScoreText>,
+            Without<StatusText>,
+            Without<ConfirmButtonText>,
+            Without<Team1ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotInfoText>,
+            Without<ShotsRemainingText>,
+            Without<TeamTurnIndicator>,
+            Without<PhaseIndicator>,
+            Without<HammerText>,
+        ),
+    >,
+    mut end_info_query: Query<
+        &mut Text,
+        (
+            With<EndInfoText>,
+            Without<StatusText>,
+            Without<ConfirmButtonText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<ShotInfoText>,
+            Without<ShotsRemainingText>,
+            Without<TeamTurnIndicator>,
+            Without<PhaseIndicator>,
+            Without<HammerText>,
+        ),
+    >,
+    mut shot_info_query: Query<
+        &mut Text,
+        (
+            With<ShotInfoText>,
+            Without<StatusText>,
+            Without<ConfirmButtonText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotsRemainingText>,
+            Without<TeamTurnIndicator>,
+            Without<PhaseIndicator>,
+            Without<HammerText>,
+        ),
+    >,
+    mut shots_remaining_query: Query<
+        &mut Text,
+        (
+            With<ShotsRemainingText>,
+            Without<StatusText>,
+            Without<ConfirmButtonText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotInfoText>,
+            Without<TeamTurnIndicator>,
+            Without<PhaseIndicator>,
+            Without<HammerText>,
+        ),
+    >,
+    mut team_turn_query: Query<
+        (&mut Text, &mut TextColor),
+        (
+            With<TeamTurnIndicator>,
+            Without<StatusText>,
+            Without<ConfirmButtonText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotInfoText>,
+            Without<ShotsRemainingText>,
+            Without<PhaseIndicator>,
+            Without<HammerText>,
+        ),
+    >,
+    mut phase_query: Query<
+        &mut Text,
+        (
+            With<PhaseIndicator>,
+            Without<StatusText>,
+            Without<ConfirmButtonText>,
+            Without<Team1ScoreText>,
+            Without<Team2ScoreText>,
+            Without<EndInfoText>,
+            Without<ShotInfoText>,
+            Without<ShotsRemainingText>,
+            Without<TeamTurnIndicator>,
+            Without<HammerText>,
+        ),
+    >,
     mut hammer_text_query: Query<
         &mut Text,
         (
+            With<HammerText>,
             Without<StatusText>,
+            Without<ConfirmButtonText>,
             Without<Team1ScoreText>,
             Without<Team2ScoreText>,
             Without<EndInfoText>,
@@ -231,6 +280,7 @@ pub fn update_ui(
             Phase::Aiming => "Ready to Throw",
             Phase::StoneMoving => "Stone Moving...",
             Phase::Resolve => "Resolving...",
+            Phase::ShowingScore => "End Score",
             Phase::Ended => "",
         };
         **text = phase_str.to_string();
@@ -238,12 +288,8 @@ pub fn update_ui(
 
     // Update Hammer Indicator text
     let hammer_team = state.first_throw_team.opponent();
-    for children in hammer_query.iter() {
-        for child in children.iter() {
-            if let Ok(mut text) = hammer_text_query.get_mut(child) {
-                **text = format!("{} HAMMER", hammer_team.name().to_uppercase());
-            }
-        }
+    for mut text in hammer_text_query.iter_mut() {
+        **text = format!("{} HAMMER", hammer_team.name().to_uppercase());
     }
 
     // --- Legacy Status Text (kept for window title) ---
@@ -253,6 +299,7 @@ pub fn update_ui(
             Phase::Aiming => "Ready to Throw",
             Phase::StoneMoving => "Stone Moving",
             Phase::Resolve => "Resolving",
+            Phase::ShowingScore => "End Score",
             Phase::Ended => "Game Over",
         };
 
@@ -283,16 +330,12 @@ pub fn update_ui(
     }
 
     // Update confirm button text
-    for children in confirm_query.iter() {
-        for child in children.iter() {
-            if let Ok(mut text) = text_query.get_mut(child) {
-                **text = match state.phase {
-                    Phase::CallingShot => "Confirm Shot".to_string(),
-                    Phase::Aiming => "THROW!".to_string(),
-                    _ => "Wait...".to_string(),
-                };
-            }
-        }
+    for mut text in confirm_text_query.iter_mut() {
+        **text = match state.phase {
+            Phase::CallingShot => "Confirm Shot".to_string(),
+            Phase::Aiming => "THROW!".to_string(),
+            _ => "Wait...".to_string(),
+        };
     }
 
     // Highlight selected curl direction
@@ -306,71 +349,46 @@ pub fn update_ui(
     }
 }
 
-/// Handles tuning slider button interactions.
+/// Updates the score summary panel visibility and content.
 ///
-/// Adjusts scale and Z offset values based on button presses.
-pub fn handle_tuning_buttons(
-    mut tuning: ResMut<ModelTuning>,
-    scale_buttons: Query<(&Interaction, &TuningAdjust), (Changed<Interaction>, With<ScaleSlider>)>,
-    z_buttons: Query<
-        (&Interaction, &TuningAdjust),
-        (
-            Changed<Interaction>,
-            With<ZOffsetSlider>,
-            Without<ScaleSlider>,
-        ),
-    >,
-    mut scale_label: Query<&mut Text, (With<ScaleValueLabel>, Without<ZOffsetValueLabel>)>,
-    mut z_label: Query<&mut Text, (With<ZOffsetValueLabel>, Without<ScaleValueLabel>)>,
+/// Shows the panel during ShowingScore phase with the pending end score.
+pub fn update_score_summary_panel(
+    state: Res<GameState>,
+    mut panel_query: Query<&mut Visibility, With<ScoreSummaryPanel>>,
+    mut text_query: Query<&mut Text, With<ScoreSummaryText>>,
 ) {
-    const SCALE_STEP: f32 = 0.01;
-    const Z_STEP: f32 = 0.01;
+    // Show/hide panel based on phase
+    for mut visibility in panel_query.iter_mut() {
+        *visibility = if state.phase == Phase::ShowingScore {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
 
-    // Handle scale buttons
-    for (interaction, adjust) in scale_buttons.iter() {
-        if *interaction == Interaction::Pressed {
-            match adjust {
-                TuningAdjust::Increase => tuning.scale = (tuning.scale + SCALE_STEP).min(2.0),
-                TuningAdjust::Decrease => tuning.scale = (tuning.scale - SCALE_STEP).max(0.01),
-            }
-            // Update label
-            for mut text in scale_label.iter_mut() {
-                **text = format!("{:.2}", tuning.scale);
+    // Update score text during ShowingScore phase
+    if state.phase == Phase::ShowingScore {
+        if let Some((team1_pts, team2_pts)) = state.pending_end_score {
+            let score_text = if team1_pts > 0 {
+                format!(
+                    "Team 1 scores {} point{}!",
+                    team1_pts,
+                    if team1_pts == 1 { "" } else { "s" }
+                )
+            } else if team2_pts > 0 {
+                format!(
+                    "Team 2 scores {} point{}!",
+                    team2_pts,
+                    if team2_pts == 1 { "" } else { "s" }
+                )
+            } else {
+                "Blank end - no score".to_string()
+            };
+
+            for mut text in text_query.iter_mut() {
+                **text = score_text.clone();
             }
         }
-    }
-
-    // Handle Z offset buttons
-    for (interaction, adjust) in z_buttons.iter() {
-        if *interaction == Interaction::Pressed {
-            match adjust {
-                TuningAdjust::Increase => tuning.z_offset = (tuning.z_offset + Z_STEP).min(1.0),
-                TuningAdjust::Decrease => tuning.z_offset = (tuning.z_offset - Z_STEP).max(-1.0),
-            }
-            // Update label
-            for mut text in z_label.iter_mut() {
-                **text = format!("{:.2}", tuning.z_offset);
-            }
-        }
-    }
-}
-
-/// Applies model tuning to all red stone visuals.
-///
-/// Updates transform (scale and Z position) based on ModelTuning resource.
-pub fn apply_model_tuning(
-    tuning: Res<ModelTuning>,
-    mut visuals: Query<&mut Transform, With<StoneVisual>>,
-) {
-    if !tuning.is_changed() {
-        return;
-    }
-
-    for mut transform in visuals.iter_mut() {
-        transform.scale = Vec3::splat(tuning.scale);
-        transform.translation.z = tuning.z_offset;
-        // Keep the rotation
-        transform.rotation = Quat::from_rotation_x(std::f32::consts::FRAC_PI_2);
     }
 }
 

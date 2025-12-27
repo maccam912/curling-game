@@ -56,6 +56,10 @@ pub struct GameState {
     pub first_throw_team: Team,
     /// Total number of ends in the game.
     pub total_ends: u8,
+    /// Pending end score during ShowingScore phase: (team1_points, team2_points).
+    pub pending_end_score: Option<(u32, u32)>,
+    /// Entities of stones that count toward the score (for highlighting).
+    pub scoring_entities: Vec<Entity>,
 }
 
 impl Default for GameState {
@@ -78,6 +82,8 @@ impl Default for GameState {
             team2_score: 0,
             first_throw_team: Team::One, // Will be randomized at startup
             total_ends: 8,
+            pending_end_score: None,
+            scoring_entities: Vec::new(),
         }
     }
 }
@@ -153,16 +159,23 @@ pub struct CameraState {
     pub transition_progress: f32,
     /// Duration of the current transition in seconds.
     pub transition_duration: f32,
+    /// Current height of follow camera (rises during FollowStone phase).
+    pub follow_camera_height: f32,
+    /// Whether the thrown stone has crossed the far hog line.
+    pub stone_crossed_hog: bool,
 }
 
 impl Default for CameraState {
     fn default() -> Self {
+        use crate::constants::FOLLOW_START_HEIGHT;
         Self {
             mode: crate::components::CameraMode::SkipView,
             target_position: Vec3::new(0.0, TEE_FROM_CENTER + BACK_FROM_TEE + 2.0, 1.7),
             target_look_at: Vec3::new(0.0, TEE_FROM_CENTER, 0.0),
             transition_progress: 1.0,
             transition_duration: 0.5,
+            follow_camera_height: FOLLOW_START_HEIGHT,
+            stone_crossed_hog: false,
         }
     }
 }
@@ -201,30 +214,6 @@ pub struct StoneAssets {
     /// Semi-transparent material for debug cylinder.
     #[cfg(feature = "debug_mode")]
     pub debug_material: Handle<StandardMaterial>,
-}
-
-// ============================================================================
-// MODEL TUNING (DEBUG)
-// ============================================================================
-
-/// Debug resource for tuning the GLB model transform.
-///
-/// Allows live adjustment of scale and Z offset via UI sliders.
-#[derive(Resource)]
-pub struct ModelTuning {
-    /// Uniform scale factor for the model.
-    pub scale: f32,
-    /// Z offset (height above physics body).
-    pub z_offset: f32,
-}
-
-impl Default for ModelTuning {
-    fn default() -> Self {
-        Self {
-            scale: 0.285,   // Tuned to match physics collider
-            z_offset: 0.10, // Tuned to align with ice surface
-        }
-    }
 }
 
 // ============================================================================

@@ -135,3 +135,25 @@ pub const MODEL_SCALE: f32 = 0.285;
 
 /// Z offset for GLB stone models to align with ice surface.
 pub const MODEL_Z_OFFSET: f32 = 0.10;
+
+// ============================================================================
+// CAMERA CONSTANTS
+// ============================================================================
+
+/// Height of camera during ThrowingView phase (lowered for immersion).
+pub const THROWING_VIEW_HEIGHT: f32 = 1.0;
+
+/// Distance behind delivery start for ThrowingView camera.
+pub const THROWING_VIEW_BEHIND: f32 = 1.5;
+
+/// Initial height of camera during FollowStone phase.
+pub const FOLLOW_START_HEIGHT: f32 = 0.8;
+
+/// Final height camera rises to during FollowStone phase.
+pub const FOLLOW_RISE_HEIGHT: f32 = 1.5;
+
+/// Rate at which camera rises during FollowStone (meters per second).
+pub const CAMERA_RISE_RATE: f32 = 0.15;
+
+/// Height of HouseOverhead camera view.
+pub const HOUSE_OVERHEAD_HEIGHT: f32 = 8.0;

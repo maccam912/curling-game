@@ -7,15 +7,17 @@ use tracing::{debug, trace};
 
 use crate::components::*;
 use crate::constants::*;
+use crate::helpers::hog_line_far;
 use crate::resources::*;
 
 /// Controls camera position and transitions based on game phase.
 ///
 /// Camera modes:
 /// - **SkipView**: First-person view from behind the far house
-/// - **Overhead**: Top-down view of the far house
-/// - **ThrowingView**: Behind the hack looking up the sheet
-/// - **FollowStone**: Tracks the moving stone
+/// - **Overhead**: Top-down view of the far house (user toggleable)
+/// - **ThrowingView**: Behind the stone looking up the sheet (lower, immersive)
+/// - **FollowStone**: Tracks the moving stone with rising height
+/// - **HouseOverhead**: Overhead view after stone crosses far hog line
 ///
 /// Transitions use smooth interpolation with configurable duration.
 pub fn camera_control_system(
@@ -26,6 +28,21 @@ pub fn camera_control_system(
     thrown_stone_query: Query<&Transform, (With<ThrowingStone>, Without<MainCamera>)>,
 ) {
     let dt = time.delta_secs();
+
+    // Check if stone crossed far hog line during FollowStone phase
+    if camera_state.mode == CameraMode::FollowStone {
+        if let Some(stone_transform) = thrown_stone_query.iter().next() {
+            let stone_y = stone_transform.translation.y;
+            if stone_y > hog_line_far() && !camera_state.stone_crossed_hog {
+                camera_state.stone_crossed_hog = true;
+                debug!(
+                    stone_y = stone_y,
+                    hog_line = hog_line_far(),
+                    "Stone crossed far hog line, transitioning to HouseOverhead"
+                );
+            }
+        }
+    }
 
     // Determine target camera mode based on game phase
     let desired_mode = match state.phase {
@@ -38,23 +55,37 @@ pub fn camera_control_system(
             }
         }
         Phase::Aiming => CameraMode::ThrowingView,
-        Phase::StoneMoving => CameraMode::FollowStone,
-        Phase::Resolve | Phase::Ended => CameraMode::SkipView,
+        Phase::StoneMoving => {
+            // Transition to HouseOverhead once stone crosses far hog line
+            if camera_state.stone_crossed_hog {
+                CameraMode::HouseOverhead
+            } else {
+                CameraMode::FollowStone
+            }
+        }
+        Phase::Resolve | Phase::ShowingScore => CameraMode::HouseOverhead,
+        Phase::Ended => CameraMode::SkipView,
     };
 
-    // Only auto-switch if not in CallingShot (user can toggle in CallingShot)
-    // OR if current mode is invalid for CallingShot phase
+    // Only auto-switch if mode differs
     let should_switch = camera_state.mode != desired_mode;
     if should_switch {
         let previous_mode = camera_state.mode;
         camera_state.mode = desired_mode;
         camera_state.transition_progress = 0.0;
 
+        // Reset follow camera height when entering FollowStone
+        if desired_mode == CameraMode::FollowStone {
+            camera_state.follow_camera_height = FOLLOW_START_HEIGHT;
+            camera_state.stone_crossed_hog = false;
+        }
+
         // Set duration based on transition type
         camera_state.transition_duration = match desired_mode {
             CameraMode::SkipView | CameraMode::Overhead => 0.5,
             CameraMode::ThrowingView => 1.0,
-            CameraMode::FollowStone => 0.5,
+            CameraMode::FollowStone => 0.3,
+            CameraMode::HouseOverhead => 1.5, // Smooth transition to overhead
         };
 
         debug!(
@@ -63,6 +94,12 @@ pub fn camera_control_system(
             duration = camera_state.transition_duration,
             "Camera mode changed"
         );
+    }
+
+    // Gradually increase follow camera height while following stone
+    if camera_state.mode == CameraMode::FollowStone {
+        camera_state.follow_camera_height =
+            (camera_state.follow_camera_height + CAMERA_RISE_RATE * dt).min(FOLLOW_RISE_HEIGHT);
     }
 
     // Calculate target position and look-at based on mode
@@ -77,16 +114,32 @@ pub fn camera_control_system(
             camera_state.target_look_at = Vec3::new(0.0, TEE_FROM_CENTER, 0.0);
         }
         CameraMode::ThrowingView => {
-            camera_state.target_position = Vec3::new(0.0, DELIVERY_START_Y - 3.0, 2.0);
-            camera_state.target_look_at = Vec3::new(0.0, 0.0, 0.0);
+            // Lower camera positioned behind where stone spawns
+            camera_state.target_position = Vec3::new(
+                0.0,
+                DELIVERY_START_Y - THROWING_VIEW_BEHIND,
+                THROWING_VIEW_HEIGHT,
+            );
+            // Look toward the broom position (roughly up the sheet)
+            camera_state.target_look_at =
+                Vec3::new(state.broom_position.x, state.broom_position.y, 0.0);
         }
         CameraMode::FollowStone => {
             if let Some(stone_transform) = thrown_stone_query.iter().next() {
                 let stone_pos = stone_transform.translation;
-                // Lower camera (1.5m) and further back (7m) so stone is visible above house buttons
-                camera_state.target_position = Vec3::new(stone_pos.x, stone_pos.y - 7.0, 1.5);
+                // Camera behind stone at dynamically rising height
+                camera_state.target_position = Vec3::new(
+                    stone_pos.x,
+                    stone_pos.y - 5.0,
+                    camera_state.follow_camera_height,
+                );
                 camera_state.target_look_at = Vec3::new(stone_pos.x, stone_pos.y + 10.0, 0.0);
             }
+        }
+        CameraMode::HouseOverhead => {
+            // Overhead view of the house for watching final result
+            camera_state.target_position = Vec3::new(0.0, TEE_FROM_CENTER, HOUSE_OVERHEAD_HEIGHT);
+            camera_state.target_look_at = Vec3::new(0.0, TEE_FROM_CENTER, 0.0);
         }
     }
 
@@ -108,6 +161,7 @@ pub fn camera_control_system(
 
             trace!(
                 position = ?camera_transform.translation,
+                height = camera_state.follow_camera_height,
                 "Camera following stone"
             );
         } else {

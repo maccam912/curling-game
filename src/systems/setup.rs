@@ -452,6 +452,7 @@ pub fn setup_ui(mut commands: Commands) {
                         ))
                         .with_children(|hammer| {
                             hammer.spawn((
+                                HammerText,
                                 Text::new("HAMMER"),
                                 TextFont {
                                     font_size: 14.0,
@@ -531,189 +532,6 @@ pub fn setup_ui(mut commands: Commands) {
                 },
                 TextColor(Color::srgba(1.0, 1.0, 1.0, 0.0)), // Hidden
             ));
-
-            // Debug tuning panel (top-right)
-            parent
-                .spawn(Node {
-                    position_type: PositionType::Absolute,
-                    right: Val::Px(20.0),
-                    top: Val::Px(20.0),
-                    flex_direction: FlexDirection::Column,
-                    row_gap: Val::Px(10.0),
-                    padding: UiRect::all(Val::Px(10.0)),
-                    ..default()
-                })
-                .insert(BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)))
-                .insert(BorderRadius::all(Val::Px(8.0)))
-                .with_children(|panel| {
-                    // Title
-                    panel.spawn((
-                        Text::new("Model Tuning"),
-                        TextFont {
-                            font_size: 18.0,
-                            ..default()
-                        },
-                        TextColor(Color::WHITE),
-                    ));
-
-                    // Scale control row
-                    panel
-                        .spawn(Node {
-                            flex_direction: FlexDirection::Row,
-                            column_gap: Val::Px(8.0),
-                            align_items: AlignItems::Center,
-                            ..default()
-                        })
-                        .with_children(|row| {
-                            row.spawn((
-                                Text::new("Scale:"),
-                                TextFont {
-                                    font_size: 14.0,
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
-                            // Minus button
-                            row.spawn((
-                                ScaleSlider,
-                                Button,
-                                Node {
-                                    width: Val::Px(30.0),
-                                    height: Val::Px(30.0),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.5, 0.2, 0.2, 0.9)),
-                                BorderRadius::all(Val::Px(4.0)),
-                                TuningAdjust::Decrease,
-                            ))
-                            .with_child((
-                                Text::new("-"),
-                                TextFont {
-                                    font_size: 20.0,
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
-                            // Value display
-                            row.spawn((
-                                ScaleValueLabel,
-                                Text::new("0.53"),
-                                TextFont {
-                                    font_size: 14.0,
-                                    ..default()
-                                },
-                                TextColor(Color::srgb(0.5, 1.0, 0.5)),
-                                Node {
-                                    min_width: Val::Px(50.0),
-                                    ..default()
-                                },
-                            ));
-                            // Plus button
-                            row.spawn((
-                                ScaleSlider,
-                                Button,
-                                Node {
-                                    width: Val::Px(30.0),
-                                    height: Val::Px(30.0),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.2, 0.5, 0.2, 0.9)),
-                                BorderRadius::all(Val::Px(4.0)),
-                                TuningAdjust::Increase,
-                            ))
-                            .with_child((
-                                Text::new("+"),
-                                TextFont {
-                                    font_size: 20.0,
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
-                        });
-
-                    // Z Offset control row
-                    panel
-                        .spawn(Node {
-                            flex_direction: FlexDirection::Row,
-                            column_gap: Val::Px(8.0),
-                            align_items: AlignItems::Center,
-                            ..default()
-                        })
-                        .with_children(|row| {
-                            row.spawn((
-                                Text::new("Z Off:"),
-                                TextFont {
-                                    font_size: 14.0,
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
-                            // Minus button
-                            row.spawn((
-                                ZOffsetSlider,
-                                Button,
-                                Node {
-                                    width: Val::Px(30.0),
-                                    height: Val::Px(30.0),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.5, 0.2, 0.2, 0.9)),
-                                BorderRadius::all(Val::Px(4.0)),
-                                TuningAdjust::Decrease,
-                            ))
-                            .with_child((
-                                Text::new("-"),
-                                TextFont {
-                                    font_size: 20.0,
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
-                            // Value display
-                            row.spawn((
-                                ZOffsetValueLabel,
-                                Text::new("0.18"),
-                                TextFont {
-                                    font_size: 14.0,
-                                    ..default()
-                                },
-                                TextColor(Color::srgb(0.5, 1.0, 0.5)),
-                                Node {
-                                    min_width: Val::Px(50.0),
-                                    ..default()
-                                },
-                            ));
-                            // Plus button
-                            row.spawn((
-                                ZOffsetSlider,
-                                Button,
-                                Node {
-                                    width: Val::Px(30.0),
-                                    height: Val::Px(30.0),
-                                    justify_content: JustifyContent::Center,
-                                    align_items: AlignItems::Center,
-                                    ..default()
-                                },
-                                BackgroundColor(Color::srgba(0.2, 0.5, 0.2, 0.9)),
-                                BorderRadius::all(Val::Px(4.0)),
-                                TuningAdjust::Increase,
-                            ))
-                            .with_child((
-                                Text::new("+"),
-                                TextFont {
-                                    font_size: 20.0,
-                                    ..default()
-                                },
-                                TextColor(Color::WHITE),
-                            ));
-                        });
-                });
 
             // Spacer to push buttons to bottom
             parent.spawn(Node {
@@ -829,6 +647,7 @@ pub fn setup_ui(mut commands: Commands) {
                             ))
                             .with_children(|btn| {
                                 btn.spawn((
+                                    ConfirmButtonText,
                                     Text::new("Confirm Shot"),
                                     TextFont {
                                         font_size: 22.0,
@@ -864,6 +683,76 @@ pub fn setup_ui(mut commands: Commands) {
                                 ));
                             });
                         });
+                });
+        });
+
+    // Score Summary Panel (centered overlay, hidden by default)
+    commands
+        .spawn((
+            ScoreSummaryPanel,
+            Node {
+                position_type: PositionType::Absolute,
+                left: Val::Percent(50.0),
+                top: Val::Percent(40.0),
+                flex_direction: FlexDirection::Column,
+                align_items: AlignItems::Center,
+                row_gap: Val::Px(20.0),
+                padding: UiRect::all(Val::Px(30.0)),
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.9)),
+            BorderRadius::all(Val::Px(15.0)),
+            Visibility::Hidden,
+            // Offset to center the panel
+            Transform::from_translation(Vec3::new(-150.0, 0.0, 0.0)),
+        ))
+        .with_children(|panel| {
+            // Title
+            panel.spawn((
+                Text::new("END COMPLETE"),
+                TextFont {
+                    font_size: 28.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+            ));
+
+            // Score summary text
+            panel.spawn((
+                ScoreSummaryText,
+                Text::new(""),
+                TextFont {
+                    font_size: 24.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(0.9, 0.9, 0.3)),
+            ));
+
+            // Confirm button
+            panel
+                .spawn((
+                    ConfirmScoreButton,
+                    Button,
+                    Node {
+                        width: Val::Px(200.0),
+                        height: Val::Px(50.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        margin: UiRect::top(Val::Px(10.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.3, 0.6, 0.3, 0.9)),
+                    BorderRadius::all(Val::Px(10.0)),
+                ))
+                .with_children(|btn| {
+                    btn.spawn((
+                        Text::new("CONFIRM"),
+                        TextFont {
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
                 });
         });
 

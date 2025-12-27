@@ -85,7 +85,9 @@ pub enum Phase {
     StoneMoving,
     /// All stones have stopped; applying rules.
     Resolve,
-    /// The end (set of 16 shots) has completed.
+    /// Showing end score and highlighting scoring stones.
+    ShowingScore,
+    /// The game has completed (all ends played).
     Ended,
 }
 
@@ -99,12 +101,14 @@ pub enum CameraMode {
     /// First-person skip view at far end looking at house.
     #[default]
     SkipView,
-    /// Top-down overhead view of the far house.
+    /// Top-down overhead view of the far house (user-toggled).
     Overhead,
     /// View from behind the stone during delivery.
     ThrowingView,
     /// Camera follows the moving stone.
     FollowStone,
+    /// Overhead view of house for watching shot result.
+    HouseOverhead,
 }
 
 // ============================================================================
@@ -257,32 +261,17 @@ pub struct StatusText;
 #[derive(Component)]
 pub struct DebugQuickSimButton;
 
-/// Marker for the GLB model visual (for tuning).
+/// Marker for the confirm button's text child.
+#[derive(Component)]
+pub struct ConfirmButtonText;
+
+/// Marker for the hammer indicator's text child.
+#[derive(Component)]
+pub struct HammerText;
+
+/// Marker for the GLB model visual.
 #[derive(Component)]
 pub struct StoneVisual;
-
-/// Marker for the scale slider.
-#[derive(Component)]
-pub struct ScaleSlider;
-
-/// Marker for the Z offset slider.
-#[derive(Component)]
-pub struct ZOffsetSlider;
-
-/// Marker for the scale value label.
-#[derive(Component)]
-pub struct ScaleValueLabel;
-
-/// Marker for the Z offset value label.
-#[derive(Component)]
-pub struct ZOffsetValueLabel;
-
-/// Direction for tuning adjustments.
-#[derive(Component, Clone, Copy)]
-pub enum TuningAdjust {
-    Increase,
-    Decrease,
-}
 
 // ============================================================================
 // HUD COMPONENTS
@@ -327,3 +316,19 @@ pub struct TeamTurnIndicator;
 /// Marker for the game phase indicator.
 #[derive(Component)]
 pub struct PhaseIndicator;
+
+/// Marker for stones that count toward the score (applied during ShowingScore phase).
+#[derive(Component)]
+pub struct ScoringStone;
+
+/// Marker for the score summary panel (shown during ShowingScore phase).
+#[derive(Component)]
+pub struct ScoreSummaryPanel;
+
+/// Marker for the score summary text.
+#[derive(Component)]
+pub struct ScoreSummaryText;
+
+/// Marker for the confirm score button.
+#[derive(Component)]
+pub struct ConfirmScoreButton;
