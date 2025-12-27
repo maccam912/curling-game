@@ -5,6 +5,7 @@
 use bevy::input::ButtonInput;
 use bevy::input::keyboard::KeyCode;
 use bevy::input::mouse::MouseButton;
+use bevy::input::touch::Touches;
 use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
 use tracing::{debug, info, trace};
@@ -140,9 +141,10 @@ pub fn handle_aiming_input(
 /// Handle mouse/touch drag to position the broom on the ice.
 ///
 /// During the CallingShot phase, allows the player to drag the broom
-/// target to set both angle and weight.
+/// target to set both angle and weight. Supports both mouse and touch input.
 pub fn handle_broom_drag(
     mouse_button: Res<ButtonInput<MouseButton>>,
+    touches: Res<Touches>,
     window_query: Query<&Window, With<PrimaryWindow>>,
     camera_query: Query<(&Camera, &GlobalTransform), With<MainCamera>>,
     mut state: ResMut<GameState>,
@@ -167,61 +169,89 @@ pub fn handle_broom_drag(
         return;
     };
 
-    // Get cursor position
-    let Some(cursor_pos) = window.cursor_position() else {
-        return;
-    };
+    // Determine the current input position (mouse or touch)
+    let mut input_pos: Option<Vec2> = None;
+    let mut is_pressed = false;
 
-    // Check for drag start - only if not clicking UI
-    if mouse_button.just_pressed(MouseButton::Left) && !any_ui_pressed {
-        touch_state.dragging = true;
-        touch_state.drag_start = cursor_pos;
-        trace!("Broom drag started at {:?}", cursor_pos);
+    // Check mouse input
+    if mouse_button.pressed(MouseButton::Left) {
+        input_pos = window.cursor_position();
+        is_pressed = true;
+
+        // Check for drag start
+        if mouse_button.just_pressed(MouseButton::Left) && !any_ui_pressed {
+            touch_state.dragging = true;
+            touch_state.drag_start = input_pos.unwrap_or_default();
+            trace!("Broom drag started (mouse) at {:?}", touch_state.drag_start);
+        }
+    }
+
+    // Check touch input as fallback if no mouse input
+    if !is_pressed && !touches.is_empty() {
+        // Get the first active touch
+        if let Some(touch) = touches.iter().next() {
+            input_pos = Some(touch.position());
+            is_pressed = true;
+
+            // Check for drag start
+            if touch_state.drag_start_time == 0.0 && !any_ui_pressed {
+                touch_state.dragging = true;
+                touch_state.drag_start = touch.position();
+                touch_state.drag_start_time = 0.01; // Mark as started
+                trace!("Broom drag started (touch) at {:?}", touch.position());
+            }
+        }
     }
 
     // Update broom position during drag
-    if mouse_button.pressed(MouseButton::Left) && touch_state.dragging {
-        if let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_pos) {
-            // Intersect ray with Z=0 plane (ice surface)
-            debug!(
-                ray_origin = ?ray.origin,
-                ray_direction = ?ray.direction,
-                "Broom drag raycast"
-            );
-            if ray.direction.z.abs() > 0.0001 {
-                let t = -ray.origin.z / ray.direction.z;
-                debug!(t = t, "Raycast t parameter");
-                if t > 0.0 {
-                    let world_pos = ray.origin + ray.direction * t;
-                    debug!(world_pos = ?world_pos, "Raycast world position");
+    if is_pressed && touch_state.dragging {
+        if let Some(current_pos) = input_pos {
+            touch_state.drag_current = current_pos;
 
-                    // Clamp to playable area
-                    let half_width = SHEET_WIDTH * 0.5 - 0.2;
-                    let min_y = hog_line_far();
-                    let max_y = back_line_far();
+            if let Ok(ray) = camera.viewport_to_world(camera_transform, current_pos) {
+                // Intersect ray with Z=0 plane (ice surface)
+                debug!(
+                    ray_origin = ?ray.origin,
+                    ray_direction = ?ray.direction,
+                    "Broom drag raycast"
+                );
+                if ray.direction.z.abs() > 0.0001 {
+                    let t = -ray.origin.z / ray.direction.z;
+                    debug!(t = t, "Raycast t parameter");
+                    if t > 0.0 {
+                        let world_pos = ray.origin + ray.direction * t;
+                        debug!(world_pos = ?world_pos, "Raycast world position");
 
-                    state.broom_position = Vec2::new(
-                        world_pos.x.clamp(-half_width, half_width),
-                        world_pos.y.clamp(min_y, max_y),
-                    );
+                        // Clamp to playable area
+                        let half_width = SHEET_WIDTH * 0.5 - 0.2;
+                        let min_y = hog_line_far();
+                        let max_y = back_line_far();
 
-                    // Update called values based on broom position
-                    state.called_angle_deg = state.angle_from_broom();
-                    state.called_weight = state.weight_from_broom();
+                        state.broom_position = Vec2::new(
+                            world_pos.x.clamp(-half_width, half_width),
+                            world_pos.y.clamp(min_y, max_y),
+                        );
 
-                    debug!(
-                        broom_x = state.broom_position.x,
-                        broom_y = state.broom_position.y,
-                        weight = state.called_weight,
-                        "Broom position updated"
-                    );
+                        // Update called values based on broom position
+                        state.called_angle_deg = state.angle_from_broom();
+                        state.called_weight = state.weight_from_broom();
+
+                        debug!(
+                            broom_x = state.broom_position.x,
+                            broom_y = state.broom_position.y,
+                            weight = state.called_weight,
+                            "Broom position updated"
+                        );
+                    }
                 }
             }
         }
     }
 
-    if mouse_button.just_released(MouseButton::Left) {
+    // Check for drag end
+    if mouse_button.just_released(MouseButton::Left) || (is_pressed == false && touch_state.dragging) {
         touch_state.dragging = false;
+        touch_state.drag_start_time = 0.0;
         trace!("Broom drag ended");
     }
 }
