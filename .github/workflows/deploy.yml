@@ -17,31 +17,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Run tests first - build and deploy only happen if tests pass
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Cache Cargo
-        uses: Swatinem/rust-cache@v2
-        with:
-          cache-on-failure: true
-
-      - name: Run tests
-        run: cargo test --no-default-features
-
-  # Build WASM release
+  # Build WASM release (tests skipped because headless runners lack necessary display support)
   build:
     name: Build WASM
-    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
