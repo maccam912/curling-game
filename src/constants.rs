@@ -180,3 +180,32 @@ pub const ORBIT_HEIGHT: f32 = 5.0;
 
 /// Orbit speed in radians per second.
 pub const ORBIT_SPEED: f32 = 0.3;
+
+// ============================================================================
+// RESPONSIVE VIEWPORT CONSTANTS
+// ============================================================================
+
+/// Mobile breakpoint width in logical pixels.
+///
+/// Viewports narrower than this are considered mobile.
+pub const MOBILE_BREAKPOINT: f32 = 768.0;
+
+/// Tablet breakpoint width in logical pixels.
+///
+/// Viewports between MOBILE_BREAKPOINT and this are considered tablet.
+pub const TABLET_BREAKPOINT: f32 = 1024.0;
+
+/// Minimum UI scale factor.
+///
+/// UI elements will never be scaled smaller than this.
+pub const MIN_UI_SCALE: f32 = 0.6;
+
+/// Maximum UI scale factor.
+///
+/// UI elements will never be scaled larger than this.
+pub const MAX_UI_SCALE: f32 = 1.2;
+
+/// Camera height multiplier for portrait mode.
+///
+/// Increases camera height to maintain field of view on narrow screens.
+pub const PORTRAIT_CAMERA_SCALE: f32 = 1.5;

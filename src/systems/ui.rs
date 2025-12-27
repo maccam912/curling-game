@@ -8,6 +8,7 @@ use tracing::trace;
 use crate::components::*;
 use crate::constants::*;
 use crate::resources::*;
+use crate::viewport::ViewportConfig;
 
 /// Updates the window title to reflect current game state.
 ///
@@ -581,4 +582,95 @@ pub fn update_game_over_panel(
             **text = breakdown;
         }
     }
+}
+
+/// Applies responsive styling to UI elements based on viewport configuration.
+///
+/// Updates:
+/// - Element sizes for ResponsiveSize components
+/// - Font sizes for ResponsiveText components
+/// - Visibility for HideOnMobile components
+/// - Padding/margins for CompactOnMobile components
+pub fn apply_responsive_ui(
+    viewport: Res<ViewportConfig>,
+    mut size_query: Query<(&ResponsiveSize, &mut Node)>,
+    mut text_query: Query<(&ResponsiveText, &mut TextFont)>,
+    mut hide_query: Query<&mut Visibility, With<HideOnMobile>>,
+    mut compact_query: Query<&mut Node, (With<CompactOnMobile>, Without<ResponsiveSize>)>,
+    mut root_query: Query<
+        &mut Node,
+        (
+            With<UiRoot>,
+            Without<ResponsiveSize>,
+            Without<CompactOnMobile>,
+        ),
+    >,
+    mut bottom_panel_query: Query<
+        &mut Node,
+        (
+            With<BottomControlPanel>,
+            Without<UiRoot>,
+            Without<ResponsiveSize>,
+            Without<CompactOnMobile>,
+        ),
+    >,
+) {
+    // Only update when viewport changes
+    if !viewport.is_changed() {
+        return;
+    }
+
+    let ui_scale = viewport.ui_scale;
+    let is_mobile = viewport.is_mobile();
+
+    // Update responsive sizes
+    for (resp_size, mut node) in size_query.iter_mut() {
+        node.width = Val::Px(resp_size.base_width * ui_scale);
+        node.height = Val::Px(resp_size.base_height * ui_scale);
+    }
+
+    // Update responsive text sizes
+    for (resp_text, mut font) in text_query.iter_mut() {
+        font.font_size = resp_text.base_size * ui_scale;
+    }
+
+    // Hide elements on mobile
+    for mut visibility in hide_query.iter_mut() {
+        *visibility = if is_mobile {
+            Visibility::Hidden
+        } else {
+            Visibility::Visible
+        };
+    }
+
+    // Apply compact styling on mobile
+    let compact_padding = if is_mobile {
+        Val::Px(5.0)
+    } else {
+        Val::Px(12.0)
+    };
+    for mut node in compact_query.iter_mut() {
+        node.padding = UiRect::all(compact_padding);
+    }
+
+    // Update root padding based on viewport
+    let base_padding = viewport.base_padding();
+    for mut node in root_query.iter_mut() {
+        node.padding = UiRect::all(Val::Px(base_padding));
+    }
+
+    // Adjust bottom panel positioning on mobile portrait
+    if viewport.layout_mode == crate::viewport::LayoutMode::MobilePortrait {
+        for mut node in bottom_panel_query.iter_mut() {
+            // Move controls closer to bottom for thumb reach
+            node.margin = UiRect::bottom(Val::Px(20.0));
+        }
+    }
+
+    trace!(
+        ui_scale = ui_scale,
+        is_mobile = is_mobile,
+        mode = ?viewport.layout_mode,
+        "Applied responsive UI styling"
+    );
 }

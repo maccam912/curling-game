@@ -37,11 +37,13 @@ pub mod constants;
 pub mod helpers;
 pub mod resources;
 pub mod systems;
+pub mod viewport;
 
 // Re-export commonly used items
 pub use components::*;
 pub use constants::*;
 pub use resources::*;
+pub use viewport::*;
 
 /// The main curling game plugin.
 ///
@@ -92,6 +94,7 @@ impl Plugin for CurlingPlugin {
             .insert_resource(resources::GameState::default())
             .insert_resource(resources::CameraState::default())
             .insert_resource(resources::TouchState::default())
+            .insert_resource(viewport::ViewportConfig::default())
             .insert_resource(Time::<Fixed>::from_hz(60.0))
             // Startup systems
             .add_systems(
@@ -109,6 +112,7 @@ impl Plugin for CurlingPlugin {
             .add_systems(
                 Update,
                 (
+                    systems::viewport_detection_system,
                     systems::update_window_title,
                     systems::handle_calling_input,
                     systems::handle_aiming_input,
@@ -126,6 +130,7 @@ impl Plugin for CurlingPlugin {
                     systems::update_ui,
                     systems::update_score_summary_panel,
                     systems::update_game_over_panel,
+                    systems::apply_responsive_ui,
                 ),
             );
 

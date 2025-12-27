@@ -319,6 +319,7 @@ pub fn setup_ui(mut commands: Commands) {
                         // Score Panel
                         left.spawn((
                             ScorePanel,
+                            CompactOnMobile,
                             Node {
                                 flex_direction: FlexDirection::Row,
                                 column_gap: Val::Px(20.0),
@@ -541,12 +542,15 @@ pub fn setup_ui(mut commands: Commands) {
 
             // Bottom control area
             parent
-                .spawn(Node {
-                    flex_direction: FlexDirection::Column,
-                    align_items: AlignItems::Center,
-                    row_gap: Val::Px(15.0),
-                    ..default()
-                })
+                .spawn((
+                    BottomControlPanel,
+                    Node {
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        row_gap: Val::Px(15.0),
+                        ..default()
+                    },
+                ))
                 .with_children(|bottom| {
                     // Action buttons row
                     bottom

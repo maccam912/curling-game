@@ -10,6 +10,7 @@ use crate::components::*;
 use crate::constants::*;
 use crate::helpers::{back_line_far, hog_line_far, tee_line_far};
 use crate::resources::*;
+use crate::viewport::ViewportConfig;
 
 /// Controls camera position and transitions based on game phase.
 ///
@@ -24,6 +25,7 @@ use crate::resources::*;
 pub fn camera_control_system(
     time: Res<Time>,
     state: Res<GameState>,
+    viewport: Res<ViewportConfig>,
     mut camera_state: ResMut<CameraState>,
     mut camera_query: Query<&mut Transform, With<MainCamera>>,
     stone_query: Query<(Entity, &Transform, &Velocity), (With<Stone>, Without<MainCamera>)>,
@@ -129,12 +131,19 @@ pub fn camera_control_system(
     // Calculate target position and look-at based on mode
     match camera_state.mode {
         CameraMode::SkipView => {
-            camera_state.target_position =
-                Vec3::new(0.0, TEE_FROM_CENTER + BACK_FROM_TEE + 2.0, 1.7);
+            // Adjust height for narrow viewports to ensure house is visible
+            let height_mult = viewport.camera_height_multiplier();
+            camera_state.target_position = Vec3::new(
+                0.0,
+                TEE_FROM_CENTER + BACK_FROM_TEE + 2.0,
+                1.7 * height_mult,
+            );
             camera_state.target_look_at = Vec3::new(0.0, TEE_FROM_CENTER, 0.0);
         }
         CameraMode::Overhead => {
-            camera_state.target_position = Vec3::new(0.0, TEE_FROM_CENTER, 12.0);
+            // Adjust overhead height for narrow viewports
+            let height_mult = viewport.camera_height_multiplier();
+            camera_state.target_position = Vec3::new(0.0, TEE_FROM_CENTER, 12.0 * height_mult);
             camera_state.target_look_at = Vec3::new(0.0, TEE_FROM_CENTER, 0.0);
         }
         CameraMode::ThrowingView => {
@@ -163,9 +172,13 @@ pub fn camera_control_system(
         CameraMode::HouseOverhead => {
             // Overhead view centered between hog line and back line to show guards and house
             let view_center_y = (hog_line_far() + back_line_far()) * 0.5;
-            // Increase height to zoom out and show more area
-            camera_state.target_position =
-                Vec3::new(0.0, view_center_y, HOUSE_OVERHEAD_HEIGHT + 4.0);
+            // Increase height to zoom out and show more area, adjust for narrow viewports
+            let height_mult = viewport.camera_height_multiplier();
+            camera_state.target_position = Vec3::new(
+                0.0,
+                view_center_y,
+                (HOUSE_OVERHEAD_HEIGHT + 4.0) * height_mult,
+            );
             camera_state.target_look_at = Vec3::new(0.0, view_center_y, 0.0);
         }
         CameraMode::GameOverOrbit => {

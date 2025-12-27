@@ -354,3 +354,41 @@ pub struct GameOverScoreBreakdown;
 /// Marker for the game over winner text.
 #[derive(Component)]
 pub struct GameOverWinnerText;
+
+// ============================================================================
+// RESPONSIVE UI COMPONENTS
+// ============================================================================
+
+/// Marker for elements that should scale their size based on viewport.
+///
+/// The actual scaling is handled by the `apply_responsive_ui` system.
+#[derive(Component)]
+pub struct ResponsiveSize {
+    /// Base width in pixels at desktop resolution.
+    pub base_width: f32,
+    /// Base height in pixels at desktop resolution.
+    pub base_height: f32,
+}
+
+/// Marker for text elements that should scale font size based on viewport.
+#[derive(Component)]
+pub struct ResponsiveText {
+    /// Base font size in pixels at desktop resolution.
+    pub base_size: f32,
+}
+
+/// Marker for elements that should be hidden on mobile viewports.
+#[derive(Component)]
+pub struct HideOnMobile;
+
+/// Marker for elements that should use compact layout on mobile.
+///
+/// This typically reduces padding and margins.
+#[derive(Component)]
+pub struct CompactOnMobile;
+
+/// Marker for the bottom control panel (buttons row).
+///
+/// This panel may need to be repositioned on mobile.
+#[derive(Component)]
+pub struct BottomControlPanel;
