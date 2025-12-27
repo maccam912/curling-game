@@ -187,7 +187,7 @@ pub fn handle_broom_drag(
     }
 
     // Check touch input as fallback if no mouse input
-    if !is_pressed && !touches.is_empty() {
+    if !is_pressed {
         // Get the first active touch
         if let Some(touch) = touches.iter().next() {
             input_pos = Some(touch.position());
