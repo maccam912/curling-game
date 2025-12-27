@@ -32,6 +32,7 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
+pub mod app_state;
 pub mod components;
 pub mod constants;
 pub mod helpers;
@@ -40,6 +41,7 @@ pub mod systems;
 pub mod viewport;
 
 // Re-export commonly used items
+pub use app_state::*;
 pub use components::*;
 pub use constants::*;
 pub use resources::*;
@@ -82,6 +84,9 @@ impl Plugin for CurlingPlugin {
         }
 
         app
+            // App state machine
+            .init_state::<app_state::AppState>()
+            .init_state::<app_state::NetworkRole>()
             // Physics plugin
             .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
             // Lighting
@@ -96,9 +101,26 @@ impl Plugin for CurlingPlugin {
             .insert_resource(resources::TouchState::default())
             .insert_resource(viewport::ViewportConfig::default())
             .insert_resource(Time::<Fixed>::from_hz(60.0))
-            // Startup systems
+            // ================================================================
+            // MAIN MENU STATE
+            // ================================================================
             .add_systems(
-                Startup,
+                OnEnter(app_state::AppState::MainMenu),
+                systems::setup_main_menu,
+            )
+            .add_systems(
+                Update,
+                systems::handle_menu_buttons.run_if(in_state(app_state::AppState::MainMenu)),
+            )
+            .add_systems(
+                OnExit(app_state::AppState::MainMenu),
+                systems::cleanup_main_menu,
+            )
+            // ================================================================
+            // PASS AND PLAY STATE (Game)
+            // ================================================================
+            .add_systems(
+                OnEnter(app_state::AppState::PassAndPlay),
                 (
                     systems::setup_scene,
                     systems::configure_rapier,
@@ -106,9 +128,12 @@ impl Plugin for CurlingPlugin {
                     systems::randomize_first_team,
                 ),
             )
-            // Physics systems run at fixed rate for consistency
-            .add_systems(FixedUpdate, systems::ice_friction_system)
-            // Update systems
+            // Physics systems run at fixed rate for consistency (in gameplay states)
+            .add_systems(
+                FixedUpdate,
+                systems::ice_friction_system.run_if(in_state(app_state::AppState::PassAndPlay)),
+            )
+            // Update systems (run only during gameplay)
             .add_systems(
                 Update,
                 (
@@ -131,7 +156,8 @@ impl Plugin for CurlingPlugin {
                     systems::update_score_summary_panel,
                     systems::update_game_over_panel,
                     systems::apply_responsive_ui,
-                ),
+                )
+                    .run_if(in_state(app_state::AppState::PassAndPlay)),
             );
 
         // Debug-only systems
@@ -141,7 +167,8 @@ impl Plugin for CurlingPlugin {
             (
                 systems::handle_debug_quick_sim,
                 systems::handle_debug_skip_to_8th,
-            ),
+            )
+                .run_if(in_state(app_state::AppState::PassAndPlay)),
         );
     }
 }

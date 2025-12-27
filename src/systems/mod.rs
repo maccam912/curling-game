@@ -10,10 +10,12 @@
 //! - `game_logic`: Shot resolution and rule enforcement
 //! - `ui`: UI updates and display
 //! - `viewport`: Responsive viewport detection
+//! - `menu`: Main menu UI and navigation
 
 pub mod camera;
 pub mod game_logic;
 pub mod input;
+pub mod menu;
 pub mod physics;
 pub mod setup;
 pub mod ui;
@@ -23,6 +25,7 @@ pub mod viewport;
 pub use camera::*;
 pub use game_logic::*;
 pub use input::*;
+pub use menu::*;
 pub use physics::*;
 pub use setup::*;
 pub use ui::*;
