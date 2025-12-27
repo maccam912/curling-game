@@ -7,8 +7,8 @@ use bevy::time::Fixed;
 use bevy_rapier2d::prelude::*;
 use tracing::{debug, trace};
 
-use crate::components::*;
-use crate::constants::*;
+use crate::components::{Stone, ThrowingStone};
+use crate::constants::{CURL_COEFFICIENT, ICE_FRICTION_DECEL, STOP_SPEED, VISUAL_ROTATION_DAMPING};
 
 /// Tracks the maximum Y position of the throwing stone.
 ///
@@ -137,6 +137,50 @@ pub fn ice_friction_system(time: Res<Time<Fixed>>, mut stones: Query<(&mut Veloc
     }
 }
 
+/// Rotates the visual stone models to show spinning.
+///
+/// This system:
+/// - Maintains constant rotation speed while the stone is moving
+/// - Applies smooth exponential damping when the stone comes to rest
+/// - Uses the `visual_rotation_speed` field on Stone to track current spin rate
+pub fn update_stone_visual_rotation(
+    time: Res<Time>,
+    mut stones: Query<(&Velocity, &mut Stone, &Children)>,
+    mut visuals: Query<&mut Transform, With<crate::components::StoneVisual>>,
+) {
+    let dt = time.delta_secs();
+
+    for (velocity, mut stone, children) in stones.iter_mut() {
+        let is_moving = velocity.linvel.length() > STOP_SPEED;
+
+        if is_moving {
+            // While moving, maintain constant rotation speed (already set at spawn)
+            // No damping while in motion
+        } else {
+            // At rest: apply exponential damping to spin down smoothly
+            // decay = e^(-damping * dt), but we use a linear approximation for small dt
+            let decay = (-VISUAL_ROTATION_DAMPING * dt).exp();
+            stone.visual_rotation_speed *= decay;
+
+            // Snap to zero when very small to avoid floating point issues
+            if stone.visual_rotation_speed.abs() < 0.01 {
+                stone.visual_rotation_speed = 0.0;
+            }
+        }
+
+        // Apply rotation to visual based on current rotation speed
+        if stone.visual_rotation_speed.abs() > 0.001 {
+            for child in children.iter() {
+                if let Ok(mut transform) = visuals.get_mut(child) {
+                    // Apply rotation around Y axis (local Y is world Z due to 90° X rotation)
+                    let rotation_delta = Quat::from_rotation_y(stone.visual_rotation_speed * dt);
+                    transform.rotation = transform.rotation * rotation_delta;
+                }
+            }
+        }
+    }
+}
+
 // ============================================================================
 // PHYSICS UNIT TESTS
 // ============================================================================
@@ -144,6 +188,7 @@ pub fn ice_friction_system(time: Res<Time<Fixed>>, mut stones: Query<(&mut Veloc
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::constants::CURL_ANGULAR_VELOCITY;
 
     const FIXED_DT: f32 = 1.0 / 60.0; // 60 Hz physics tick
 

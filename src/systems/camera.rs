@@ -97,6 +97,12 @@ pub fn camera_control_system(
             camera_state.stone_crossed_hog = false;
         }
 
+        // Reset stone_crossed_hog when entering ThrowingView (before throw)
+        // This ensures subsequent throws start with fresh tracking state
+        if desired_mode == CameraMode::ThrowingView {
+            camera_state.stone_crossed_hog = false;
+        }
+
         // Set duration based on transition type
         camera_state.transition_duration = match desired_mode {
             CameraMode::SkipView | CameraMode::Overhead => 0.5,

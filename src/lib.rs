@@ -115,6 +115,7 @@ impl Plugin for CurlingPlugin {
                     systems::handle_touch_input,
                     systems::handle_broom_drag,
                     systems::update_broom_visual,
+                    systems::update_stone_visual_rotation,
                     systems::track_throwing_stone,
                     systems::detect_stone_collision,
                     systems::check_out_of_bounds,

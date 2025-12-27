@@ -203,8 +203,11 @@ pub struct Stone {
     pub team: Team,
     /// The curl direction this stone was thrown with.
     pub curl_direction: CurlDirection,
-    /// Current angular velocity (decays over time).
+    /// Current angular velocity for physics curl (decays over time).
     pub angular_velocity: f32,
+    /// Current visual rotation speed in rad/s.
+    /// Spins at constant rate while moving, then damps to zero when at rest.
+    pub visual_rotation_speed: f32,
 }
 
 /// Marker component for the stone currently being thrown.

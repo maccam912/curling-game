@@ -84,10 +84,24 @@ pub const WEIGHT_MAX_SPEED: f32 = 3.5;
 /// Derived from friction coefficient μ ≈ 0.012: deceleration = μ × g ≈ 0.115 m/s².
 pub const ICE_FRICTION_DECEL: f32 = 0.115;
 
-/// Initial angular velocity for stone curl in rad/s.
+/// Initial angular velocity for stone curl physics in rad/s.
 ///
+/// This value affects how much lateral curl force is applied.
 /// Stones typically rotate 2-3 times over their travel distance.
 pub const CURL_ANGULAR_VELOCITY: f32 = 1.5;
+
+/// Visual rotation speed for stones in rad/s.
+///
+/// In real curling, stones complete roughly 2-3 rotations over ~25 seconds of travel,
+/// which is about 1 rotation every 8-10 seconds (~0.63-0.79 rad/s).
+/// A full rotation = 2π rad, so 0.7 rad/s = ~9 seconds per rotation.
+pub const VISUAL_ROTATION_SPEED: f32 = 0.7;
+
+/// Damping factor for visual rotation when stone is at rest.
+///
+/// Higher values = faster damping. At 5.0, a stone will damp from full
+/// rotation speed to near-zero in roughly 1 second (exponential decay).
+pub const VISUAL_ROTATION_DAMPING: f32 = 5.0;
 
 /// Coefficient for lateral curl force per rad/s of rotation.
 ///

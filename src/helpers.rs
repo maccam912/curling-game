@@ -140,6 +140,12 @@ pub fn spawn_stone(
     curl_direction: CurlDirection,
 ) -> Entity {
     let initial_angular_vel = curl_direction.angular_velocity();
+    // Visual rotation direction: positive for InTurn (clockwise), negative for OutTurn
+    let initial_visual_rotation = if curl_direction == CurlDirection::InTurn {
+        VISUAL_ROTATION_SPEED
+    } else {
+        -VISUAL_ROTATION_SPEED
+    };
 
     let stone_entity = commands
         .spawn((
@@ -147,6 +153,7 @@ pub fn spawn_stone(
                 team,
                 curl_direction,
                 angular_velocity: initial_angular_vel,
+                visual_rotation_speed: initial_visual_rotation,
             },
             RigidBody::Dynamic,
             Collider::ball(STONE_RADIUS),
