@@ -43,6 +43,10 @@ pub struct RoomCodeInput;
 #[derive(Component)]
 pub struct RoomCodeDisplay;
 
+/// Marker for the "Submit Room Code" button.
+#[derive(Component)]
+pub struct SubmitRoomCodeButton;
+
 /// Marker for the online lobby root node.
 #[derive(Component)]
 pub struct OnlineLobbyRoot;
@@ -175,7 +179,7 @@ pub fn setup_online_menu(mut commands: Commands, mut online_state: ResMut<Online
                     ));
 
                     input_section.spawn((
-                        Text::new("Type 4 characters, then press Enter"),
+                        Text::new("Type 4 characters"),
                         TextFont {
                             font_size: 14.0,
                             ..default()
@@ -186,6 +190,36 @@ pub fn setup_online_menu(mut commands: Commands, mut online_state: ResMut<Online
                             ..default()
                         },
                     ));
+
+                    // Submit button (hidden until 4 chars entered)
+                    input_section
+                        .spawn((
+                            Button,
+                            Node {
+                                width: Val::Px(150.0),
+                                height: Val::Px(50.0),
+                                margin: UiRect::top(Val::Px(20.0)),
+                                justify_content: JustifyContent::Center,
+                                align_items: AlignItems::Center,
+                                border: UiRect::all(Val::Px(2.0)),
+                                display: Display::None, // Hidden by default
+                                ..default()
+                            },
+                            BorderColor::all(Color::srgba(0.4, 0.8, 1.0, 0.8)),
+                            BorderRadius::all(Val::Px(8.0)),
+                            BackgroundColor(BUTTON_COLOR),
+                            SubmitRoomCodeButton,
+                        ))
+                        .with_children(|btn| {
+                            btn.spawn((
+                                Text::new("Join"),
+                                TextFont {
+                                    font_size: 22.0,
+                                    ..default()
+                                },
+                                TextColor(Color::WHITE),
+                            ));
+                        });
                 });
 
             // Spacer
@@ -288,12 +322,14 @@ pub fn handle_online_menu_buttons(
     create_query: Query<&Interaction, (Changed<Interaction>, With<CreateGameButton>)>,
     join_query: Query<&Interaction, (Changed<Interaction>, With<JoinGameButton>)>,
     back_query: Query<&Interaction, (Changed<Interaction>, With<BackToMainMenuButton>)>,
+    submit_query: Query<&Interaction, (Changed<Interaction>, With<SubmitRoomCodeButton>)>,
     mut button_colors: Query<
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
     mut input_section: Query<&mut Node, With<RoomCodeInput>>,
     mut room_code_text: Query<&mut Text, With<RoomCodeDisplay>>,
+    mut submit_button: Query<&mut Node, (With<SubmitRoomCodeButton>, Without<RoomCodeInput>)>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut char_events: MessageReader<KeyboardInput>,
 ) {
@@ -383,10 +419,22 @@ pub fn handle_online_menu_buttons(
         }
     }
 
-    // Handle Enter to submit room code
+    // Handle Submit button click for room code
+    for interaction in submit_query.iter() {
+        if *interaction == Interaction::Pressed && online_state.input_room_code.len() == 4 {
+            let code = online_state.input_room_code.clone().to_uppercase();
+            tracing::info!(room_code = %code, "Joining game via button");
+            online_state.room_code = code;
+            online_state.is_host = false;
+            next_network_role.set(NetworkRole::Guest);
+            next_app_state.set(AppState::OnlineLobby);
+        }
+    }
+
+    // Handle Enter to submit room code (keyboard fallback)
     if keyboard.just_pressed(KeyCode::Enter) && online_state.input_room_code.len() == 4 {
         let code = online_state.input_room_code.clone().to_uppercase();
-        tracing::info!(room_code = %code, "Joining game");
+        tracing::info!(room_code = %code, "Joining game via Enter key");
         online_state.room_code = code;
         online_state.is_host = false;
         next_network_role.set(NetworkRole::Guest);
@@ -402,6 +450,15 @@ pub fn handle_online_menu_buttons(
             .take(4)
             .collect();
         **text = display;
+    }
+
+    // Show/hide submit button based on code length
+    for mut node in submit_button.iter_mut() {
+        node.display = if online_state.input_room_code.len() == 4 {
+            Display::Flex
+        } else {
+            Display::None
+        };
     }
 
     // Visual feedback for buttons
