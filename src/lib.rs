@@ -163,10 +163,17 @@ impl Plugin for CurlingPlugin {
                     systems::randomize_first_team,
                 ),
             )
-            // Physics systems run at fixed rate for consistency (in gameplay states)
+            // Physics systems run at fixed rate for consistency (FPS-independent)
             .add_systems(
                 FixedUpdate,
-                systems::ice_friction_system.run_if(in_state(app_state::AppState::PassAndPlay)),
+                (
+                    systems::ice_friction_system,
+                    systems::track_throwing_stone,
+                    systems::detect_stone_collision,
+                    systems::check_out_of_bounds,
+                    systems::detect_shot_end,
+                )
+                    .run_if(in_state(app_state::AppState::PassAndPlay)),
             )
             // Update systems (run only during gameplay)
             .add_systems(
@@ -180,10 +187,6 @@ impl Plugin for CurlingPlugin {
                     systems::handle_broom_drag,
                     systems::update_broom_visual,
                     systems::update_stone_visual_rotation,
-                    systems::track_throwing_stone,
-                    systems::detect_stone_collision,
-                    systems::check_out_of_bounds,
-                    systems::detect_shot_end,
                     systems::resolve_shot,
                     systems::handle_score_confirmation,
                     systems::camera_control_system,
@@ -207,10 +210,17 @@ impl Plugin for CurlingPlugin {
                     systems::spawn_your_team_indicator,
                 ),
             )
-            // Physics systems for online game
+            // Physics systems for online game (FPS-independent)
             .add_systems(
                 FixedUpdate,
-                systems::ice_friction_system.run_if(in_state(app_state::AppState::OnlineGame)),
+                (
+                    systems::ice_friction_system,
+                    systems::track_throwing_stone,
+                    systems::detect_stone_collision,
+                    systems::check_out_of_bounds,
+                    systems::detect_shot_end,
+                )
+                    .run_if(in_state(app_state::AppState::OnlineGame)),
             )
             // Network sync systems for online game (always run)
             .add_systems(
@@ -221,7 +231,11 @@ impl Plugin for CurlingPlugin {
                     systems::send_shot_on_throw,
                     systems::send_positions_on_resolve,
                     systems::sync_stone_positions,
+                    systems::send_periodic_sync,
+                    systems::apply_periodic_sync,
                     systems::online_camera_control,
+                    systems::send_broom_updates,
+                    systems::apply_broom_updates,
                 )
                     .run_if(in_state(app_state::AppState::OnlineGame)),
             )
@@ -245,10 +259,6 @@ impl Plugin for CurlingPlugin {
                     systems::update_window_title,
                     systems::update_broom_visual,
                     systems::update_stone_visual_rotation,
-                    systems::track_throwing_stone,
-                    systems::detect_stone_collision,
-                    systems::check_out_of_bounds,
-                    systems::detect_shot_end,
                     systems::resolve_shot,
                     systems::handle_score_confirmation,
                     systems::camera_control_system,

@@ -191,9 +191,18 @@ pub fn receive_network_messages(
                     curl,
                 });
             }
+            GameMessage::BroomUpdate { x, y } => {
+                tracing::trace!(x = x, y = y, "Received broom position update");
+                online_state.pending_broom_position = Some((x, y));
+            }
             GameMessage::ShotResolved { stones } => {
                 tracing::info!(stone_count = stones.len(), "Received stone positions");
                 online_state.pending_positions =
+                    Some(stones.iter().map(|s| (s.team, s.x, s.y)).collect());
+            }
+            GameMessage::PositionSync { stones } => {
+                tracing::debug!(stone_count = stones.len(), "Received periodic sync");
+                online_state.pending_periodic_sync =
                     Some(stones.iter().map(|s| (s.team, s.x, s.y)).collect());
             }
             GameMessage::ShotCalled { .. } => {
@@ -206,6 +215,180 @@ pub fn receive_network_messages(
                 tracing::info!("Opponent is ready");
             }
         }
+    }
+}
+
+// ============================================================================
+// PERIODIC SYNC SYSTEMS
+// ============================================================================
+
+/// Sends periodic stone position syncs during stone movement.
+///
+/// The active player (who threw) sends position updates every ~1 second
+/// to help the watching player stay synchronized during physics simulation.
+pub fn send_periodic_sync(
+    time: Res<Time>,
+    state: Res<GameState>,
+    mut online_state: ResMut<OnlineState>,
+    stones: Query<(&Transform, &Stone)>,
+    mut socket_query: Query<&mut MatchboxSocket, With<NetworkSocket>>,
+) {
+    // Only send during stone movement
+    if state.phase != Phase::StoneMoving {
+        // Reset timer when not in StoneMoving
+        online_state.sync_timer.reset();
+        return;
+    }
+
+    // Check if it's our turn (we're simulating physics)
+    let Some(local_team) = online_state.local_team else {
+        return;
+    };
+    if state.current_team() != local_team {
+        return; // Opponent threw, they send syncs
+    }
+
+    // Tick the timer
+    online_state.sync_timer.tick(time.delta());
+
+    // Send on timer fire
+    if online_state.sync_timer.just_finished() {
+        let Ok(mut socket) = socket_query.single_mut() else {
+            return;
+        };
+
+        let stone_states: Vec<StoneState> = stones
+            .iter()
+            .map(|(transform, stone)| StoneState {
+                team: stone.team,
+                x: transform.translation.x,
+                y: transform.translation.y,
+            })
+            .collect();
+
+        let message = GameMessage::PositionSync {
+            stones: stone_states.clone(),
+        };
+
+        send_message(&mut socket, &message);
+        tracing::debug!(
+            stone_count = stone_states.len(),
+            "Sent periodic position sync"
+        );
+    }
+}
+
+/// Applies periodic position syncs received from the opponent.
+///
+/// During the opponent's shot, this corrects our local stone positions
+/// to match what they're seeing, preventing drift due to FPS differences.
+pub fn apply_periodic_sync(
+    mut online_state: ResMut<OnlineState>,
+    state: Res<GameState>,
+    mut stones: Query<(&mut Transform, &Stone)>,
+) {
+    // Only apply during stone movement
+    if state.phase != Phase::StoneMoving {
+        return;
+    }
+
+    // Check if it's opponent's turn (we're watching)
+    let Some(local_team) = online_state.local_team else {
+        return;
+    };
+    if state.current_team() == local_team {
+        return; // Our turn, we're authoritative
+    }
+
+    // Get pending sync
+    let Some(positions) = online_state.pending_periodic_sync.take() else {
+        return;
+    };
+
+    // Apply positions to existing stones
+    // Note: We can't add/remove stones here - that happens on shot resolution
+    // We just update positions of stones that exist on both sides
+    for (mut transform, stone) in stones.iter_mut() {
+        // Find matching stone in sync data (by team, closest position)
+        // This is imperfect but handles most cases
+        if let Some((_, x, y)) = positions
+            .iter()
+            .filter(|(team, _, _)| *team == stone.team)
+            .min_by(|(_, ax, ay), (_, bx, by)| {
+                let dist_a =
+                    (transform.translation.x - ax).powi(2) + (transform.translation.y - ay).powi(2);
+                let dist_b =
+                    (transform.translation.x - bx).powi(2) + (transform.translation.y - by).powi(2);
+                dist_a.partial_cmp(&dist_b).unwrap()
+            })
+        {
+            // Blend toward synced position (smooth interpolation)
+            let blend = 0.5; // 50% toward synced position
+            transform.translation.x = transform.translation.x * (1.0 - blend) + x * blend;
+            transform.translation.y = transform.translation.y * (1.0 - blend) + y * blend;
+        }
+    }
+
+    tracing::debug!("Applied periodic position sync");
+}
+
+// ============================================================================
+// BROOM SYNC SYSTEMS
+// ============================================================================
+
+/// Sends broom position updates to the opponent during CallingShot/Aiming.
+///
+/// The active player sends position updates when their broom moves significantly.
+pub fn send_broom_updates(
+    state: Res<GameState>,
+    online_state: Res<OnlineState>,
+    mut socket_query: Query<&mut MatchboxSocket, With<NetworkSocket>>,
+    mut last_broom_pos: Local<Vec2>,
+) {
+    // Only send during calling/aiming when it's our turn
+    if state.phase != Phase::CallingShot && state.phase != Phase::Aiming {
+        return;
+    }
+
+    let Some(local_team) = online_state.local_team else {
+        return;
+    };
+    if state.current_team() != local_team {
+        return; // Not our turn
+    }
+
+    // Only send if position changed significantly (0.05 units)
+    if state.broom_position.distance(*last_broom_pos) < 0.05 {
+        return;
+    }
+
+    let Ok(mut socket) = socket_query.single_mut() else {
+        return;
+    };
+
+    let message = GameMessage::BroomUpdate {
+        x: state.broom_position.x,
+        y: state.broom_position.y,
+    };
+    send_message(&mut socket, &message);
+    *last_broom_pos = state.broom_position;
+}
+
+/// Applies broom position updates received from the opponent.
+///
+/// Updates the broom position on the passive player's screen so they can
+/// see where the active player is aiming.
+pub fn apply_broom_updates(mut state: ResMut<GameState>, mut online_state: ResMut<OnlineState>) {
+    // Only apply if it's opponent's turn
+    let Some(local_team) = online_state.local_team else {
+        return;
+    };
+    if state.current_team() == local_team {
+        return; // Our turn, we control the broom
+    }
+
+    if let Some((x, y)) = online_state.pending_broom_position.take() {
+        state.broom_position = Vec2::new(x, y);
     }
 }
 
@@ -371,8 +554,8 @@ pub fn is_local_turn(state: &GameState, online_state: &OnlineState) -> bool {
 
 /// Controls camera behavior for online game.
 ///
-/// - When waiting (opponent's turn during CallingShot/Aiming): orbit camera around house
-/// - When stone is moving: follow shot as usual
+/// - When waiting (opponent's turn during CallingShot/Aiming): show skip view to see broom
+/// - When stone is moving: explicitly set FollowStone for both players
 pub fn online_camera_control(
     _time: Res<Time>,
     state: Res<GameState>,
@@ -388,14 +571,22 @@ pub fn online_camera_control(
     match state.phase {
         Phase::CallingShot | Phase::Aiming => {
             if !is_our_turn {
-                // Opponent is aiming - show orbit view of house
-                camera_state.mode = CameraMode::GameOverOrbit;
+                // Opponent is aiming - use skip view to see their broom position
+                // (broom position synced via BroomUpdate messages)
+                camera_state.mode = CameraMode::SkipView;
             }
             // If it's our turn, let the normal camera system handle it
         }
         Phase::StoneMoving => {
-            // Both players watch the shot - follow mode
-            // This is handled by the normal camera system via FollowStone mode
+            // Both players watch the shot - explicitly set FollowStone
+            // Reset camera state if transitioning into StoneMoving
+            if camera_state.mode != CameraMode::FollowStone
+                && camera_state.mode != CameraMode::HouseOverhead
+            {
+                camera_state.mode = CameraMode::FollowStone;
+                camera_state.stone_crossed_hog = false;
+                camera_state.follow_camera_height = FOLLOW_START_HEIGHT;
+            }
         }
         Phase::ShowingScore => {
             // Both see the house overhead

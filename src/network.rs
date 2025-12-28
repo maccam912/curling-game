@@ -39,8 +39,12 @@ pub enum GameMessage {
         weight: f32,
         curl: CurlDirection,
     },
+    /// Sent periodically while active player drags broom.
+    BroomUpdate { x: f32, y: f32 },
     /// Sent after physics simulation completes, syncing final stone positions.
     ShotResolved { stones: Vec<StoneState> },
+    /// Periodic position sync during stone movement (~1/sec).
+    PositionSync { stones: Vec<StoneState> },
     /// Sent after scoring an end.
     EndScored { team1: u32, team2: u32 },
     /// Sent to confirm the game is ready to start.
@@ -193,5 +197,19 @@ mod tests {
         assert_eq!(decoded.team, Team::One);
         assert!((decoded.x - 1.5).abs() < 0.01);
         assert!((decoded.y - 10.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn broom_update_serializes() {
+        let msg = GameMessage::BroomUpdate { x: 1.5, y: 30.0 };
+        let data = bincode::serialize(&msg).unwrap();
+        let decoded: GameMessage = bincode::deserialize(&data).unwrap();
+        match decoded {
+            GameMessage::BroomUpdate { x, y } => {
+                assert!((x - 1.5).abs() < 0.01);
+                assert!((y - 30.0).abs() < 0.01);
+            }
+            _ => panic!("Wrong message type"),
+        }
     }
 }

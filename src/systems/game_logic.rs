@@ -35,7 +35,7 @@ pub fn check_out_of_bounds(
 ///
 /// After stones are still for `STOP_HOLD_SECS`, transitions to Resolve phase.
 pub fn detect_shot_end(
-    time: Res<Time>,
+    time: Res<Time<bevy::time::Fixed>>,
     velocities: Query<&Velocity, With<Stone>>,
     mut state: ResMut<GameState>,
 ) {

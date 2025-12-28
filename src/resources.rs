@@ -255,7 +255,7 @@ pub struct ShotSnapshot {
 // ============================================================================
 
 /// State for online multiplayer sessions.
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct OnlineState {
     /// Room code for this session (e.g., "ABC1").
     pub room_code: String,
@@ -271,6 +271,29 @@ pub struct OnlineState {
     pub pending_shot: Option<PendingShot>,
     /// Pending stone positions from opponent (after their shot resolved).
     pub pending_positions: Option<Vec<(crate::components::Team, f32, f32)>>,
+    /// Timer for periodic sync during stone movement (fires every 1.0s).
+    pub sync_timer: bevy::time::Timer,
+    /// Pending periodic sync positions (during opponent's shot).
+    pub pending_periodic_sync: Option<Vec<(crate::components::Team, f32, f32)>>,
+    /// Pending broom position from opponent (during their calling/aiming).
+    pub pending_broom_position: Option<(f32, f32)>,
+}
+
+impl Default for OnlineState {
+    fn default() -> Self {
+        Self {
+            room_code: String::new(),
+            is_host: false,
+            opponent_connected: false,
+            input_room_code: String::new(),
+            local_team: None,
+            pending_shot: None,
+            pending_positions: None,
+            sync_timer: bevy::time::Timer::from_seconds(1.0, bevy::time::TimerMode::Repeating),
+            pending_periodic_sync: None,
+            pending_broom_position: None,
+        }
+    }
 }
 
 /// A shot received from the opponent, waiting to be simulated.
