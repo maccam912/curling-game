@@ -36,6 +36,7 @@ pub mod app_state;
 pub mod components;
 pub mod constants;
 pub mod helpers;
+pub mod network;
 pub mod resources;
 pub mod systems;
 pub mod viewport;
@@ -44,6 +45,7 @@ pub mod viewport;
 pub use app_state::*;
 pub use components::*;
 pub use constants::*;
+pub use network::*;
 pub use resources::*;
 pub use viewport::*;
 
@@ -99,6 +101,7 @@ impl Plugin for CurlingPlugin {
             .insert_resource(resources::GameState::default())
             .insert_resource(resources::CameraState::default())
             .insert_resource(resources::TouchState::default())
+            .insert_resource(resources::OnlineState::default())
             .insert_resource(viewport::ViewportConfig::default())
             .insert_resource(Time::<Fixed>::from_hz(60.0))
             // ================================================================
@@ -115,6 +118,38 @@ impl Plugin for CurlingPlugin {
             .add_systems(
                 OnExit(app_state::AppState::MainMenu),
                 systems::cleanup_main_menu,
+            )
+            // ================================================================
+            // ONLINE MENU STATE
+            // ================================================================
+            .add_systems(
+                OnEnter(app_state::AppState::OnlineMenu),
+                systems::setup_online_menu,
+            )
+            .add_systems(
+                Update,
+                systems::handle_online_menu_buttons
+                    .run_if(in_state(app_state::AppState::OnlineMenu)),
+            )
+            .add_systems(
+                OnExit(app_state::AppState::OnlineMenu),
+                systems::cleanup_online_menu,
+            )
+            // ================================================================
+            // ONLINE LOBBY STATE
+            // ================================================================
+            .add_systems(
+                OnEnter(app_state::AppState::OnlineLobby),
+                systems::setup_online_lobby,
+            )
+            .add_systems(
+                Update,
+                (systems::poll_peer_events, systems::handle_lobby_buttons)
+                    .run_if(in_state(app_state::AppState::OnlineLobby)),
+            )
+            .add_systems(
+                OnExit(app_state::AppState::OnlineLobby),
+                systems::cleanup_online_lobby,
             )
             // ================================================================
             // PASS AND PLAY STATE (Game)
@@ -158,6 +193,78 @@ impl Plugin for CurlingPlugin {
                     systems::apply_responsive_ui,
                 )
                     .run_if(in_state(app_state::AppState::PassAndPlay)),
+            )
+            // ================================================================
+            // ONLINE GAME STATE (Multiplayer)
+            // ================================================================
+            .add_systems(
+                OnEnter(app_state::AppState::OnlineGame),
+                (
+                    systems::setup_scene,
+                    systems::configure_rapier,
+                    systems::setup_ui,
+                    systems::setup_online_game,
+                    systems::spawn_your_team_indicator,
+                ),
+            )
+            // Physics systems for online game
+            .add_systems(
+                FixedUpdate,
+                systems::ice_friction_system.run_if(in_state(app_state::AppState::OnlineGame)),
+            )
+            // Network sync systems for online game (always run)
+            .add_systems(
+                Update,
+                (
+                    systems::receive_network_messages,
+                    systems::apply_pending_shot,
+                    systems::send_shot_on_throw,
+                    systems::send_positions_on_resolve,
+                    systems::sync_stone_positions,
+                    systems::online_camera_control,
+                )
+                    .run_if(in_state(app_state::AppState::OnlineGame)),
+            )
+            // Input systems for online game (only run when it's local player's turn)
+            .add_systems(
+                Update,
+                (
+                    systems::handle_calling_input,
+                    systems::handle_aiming_input,
+                    systems::handle_touch_input,
+                    systems::handle_broom_drag,
+                )
+                    .run_if(in_state(app_state::AppState::OnlineGame))
+                    .run_if(systems::run_if_local_turn),
+            )
+            // Core gameplay systems for online game (always run)
+            .add_systems(
+                Update,
+                (
+                    systems::viewport_detection_system,
+                    systems::update_window_title,
+                    systems::update_broom_visual,
+                    systems::update_stone_visual_rotation,
+                    systems::track_throwing_stone,
+                    systems::detect_stone_collision,
+                    systems::check_out_of_bounds,
+                    systems::detect_shot_end,
+                    systems::resolve_shot,
+                    systems::handle_score_confirmation,
+                    systems::camera_control_system,
+                    systems::update_ui,
+                    systems::update_score_summary_panel,
+                    systems::update_game_over_panel,
+                    systems::apply_responsive_ui,
+                )
+                    .run_if(in_state(app_state::AppState::OnlineGame)),
+            )
+            .add_systems(
+                OnExit(app_state::AppState::OnlineGame),
+                (
+                    systems::cleanup_online_game,
+                    systems::cleanup_your_team_indicator,
+                ),
             );
 
         // Debug-only systems

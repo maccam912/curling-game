@@ -10,6 +10,7 @@
 //! - **UI Components**: Marker components for UI elements
 
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
 use crate::constants::CURL_ANGULAR_VELOCITY;
 
@@ -18,7 +19,7 @@ use crate::constants::CURL_ANGULAR_VELOCITY;
 // ============================================================================
 
 /// Represents one of the two teams in curling.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum Team {
     /// Team 1 (throws first on even-numbered shots). Default color: red.
     One,
@@ -75,9 +76,10 @@ impl Team {
 // ============================================================================
 
 /// Current phase of gameplay within a shot.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub enum Phase {
     /// Skip is calling the shot (selecting target and weight).
+    #[default]
     CallingShot,
     /// Player is fine-tuning aim before throwing.
     Aiming,
@@ -164,7 +166,7 @@ impl ShotType {
 // ============================================================================
 
 /// Curl direction for stone delivery (rotation direction).
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default, Serialize, Deserialize)]
 pub enum CurlDirection {
     /// Clockwise rotation - stone curls left as it slows.
     #[default]

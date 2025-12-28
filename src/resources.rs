@@ -249,3 +249,34 @@ pub struct ShotSnapshot {
     /// Whether FGZ rules are active for this shot.
     pub fgz_active: bool,
 }
+
+// ============================================================================
+// ONLINE STATE
+// ============================================================================
+
+/// State for online multiplayer sessions.
+#[derive(Resource, Default)]
+pub struct OnlineState {
+    /// Room code for this session (e.g., "ABC1").
+    pub room_code: String,
+    /// Whether we are hosting (created the room) or joining.
+    pub is_host: bool,
+    /// Whether the opponent has connected.
+    pub opponent_connected: bool,
+    /// Room code being typed by the user when joining.
+    pub input_room_code: String,
+    /// Which team the local player is (Host = Team1, Guest = Team2).
+    pub local_team: Option<crate::components::Team>,
+    /// Pending shot from opponent (received via network, waiting to be applied).
+    pub pending_shot: Option<PendingShot>,
+    /// Pending stone positions from opponent (after their shot resolved).
+    pub pending_positions: Option<Vec<(crate::components::Team, f32, f32)>>,
+}
+
+/// A shot received from the opponent, waiting to be simulated.
+#[derive(Clone)]
+pub struct PendingShot {
+    pub angle: f32,
+    pub weight: f32,
+    pub curl: crate::components::CurlDirection,
+}

@@ -11,11 +11,15 @@
 //! - `ui`: UI updates and display
 //! - `viewport`: Responsive viewport detection
 //! - `menu`: Main menu UI and navigation
+//! - `online`: Online multiplayer menu and lobby
+//! - `online_game`: Online game synchronization
 
 pub mod camera;
 pub mod game_logic;
 pub mod input;
 pub mod menu;
+pub mod online;
+pub mod online_game;
 pub mod physics;
 pub mod setup;
 pub mod ui;
@@ -26,6 +30,8 @@ pub use camera::*;
 pub use game_logic::*;
 pub use input::*;
 pub use menu::*;
+pub use online::*;
+pub use online_game::*;
 pub use physics::*;
 pub use setup::*;
 pub use ui::*;
