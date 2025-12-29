@@ -12,6 +12,55 @@ use crate::network::{NetworkSocket, create_socket, poll_peer_connected};
 use crate::resources::OnlineState;
 
 // ============================================================================
+// WASM JAVASCRIPT INTEROP
+// ============================================================================
+
+/// JavaScript interop functions for mobile keyboard and URL handling.
+/// These functions call into the JavaScript defined in index.html.
+#[cfg(target_arch = "wasm32")]
+mod js_interop {
+    use wasm_bindgen::prelude::*;
+
+    #[wasm_bindgen]
+    extern "C" {
+        #[wasm_bindgen(js_namespace = ["window", "curlingGameInterop"], js_name = focusCodeInput)]
+        pub fn focus_code_input();
+
+        #[wasm_bindgen(js_namespace = ["window", "curlingGameInterop"], js_name = getCodeInputValue)]
+        pub fn get_code_input_value() -> String;
+
+        #[wasm_bindgen(js_namespace = ["window", "curlingGameInterop"], js_name = setCodeInputValue)]
+        pub fn set_code_input_value(val: &str);
+
+        #[wasm_bindgen(js_namespace = ["window", "curlingGameInterop"], js_name = getUrlCodeParam)]
+        pub fn get_url_code_param() -> String;
+
+        #[wasm_bindgen(js_namespace = ["window", "curlingGameInterop"], js_name = copyToClipboard)]
+        pub fn copy_to_clipboard(text: &str);
+
+        #[wasm_bindgen(js_namespace = ["window", "curlingGameInterop"], js_name = getBaseUrl)]
+        pub fn get_base_url() -> String;
+    }
+}
+
+/// Stub implementations for non-WASM builds.
+#[cfg(not(target_arch = "wasm32"))]
+mod js_interop {
+    pub fn focus_code_input() {}
+    pub fn get_code_input_value() -> String {
+        String::new()
+    }
+    pub fn set_code_input_value(_val: &str) {}
+    pub fn get_url_code_param() -> String {
+        String::new()
+    }
+    pub fn copy_to_clipboard(_text: &str) {}
+    pub fn get_base_url() -> String {
+        String::from("http://localhost/")
+    }
+}
+
+// ============================================================================
 // COMPONENTS
 // ============================================================================
 
@@ -59,6 +108,10 @@ pub struct LobbyStatusText;
 #[derive(Component)]
 pub struct CancelLobbyButton;
 
+/// Marker for the "Copy Link" button in lobby.
+#[derive(Component)]
+pub struct CopyLinkButton;
+
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -88,6 +141,16 @@ fn generate_room_code() -> String {
 pub fn setup_online_menu(mut commands: Commands, mut online_state: ResMut<OnlineState>) {
     // Reset online state
     *online_state = OnlineState::default();
+
+    // Check for URL code parameter (for direct join links)
+    let url_code = js_interop::get_url_code_param();
+    let has_url_code = url_code.len() == 4 && url_code.chars().all(|c| c.is_ascii_alphanumeric());
+    if has_url_code {
+        online_state.input_room_code = url_code.clone();
+        // Also set it in the hidden input for consistency
+        js_interop::set_code_input_value(&url_code);
+        tracing::info!(code = %url_code, "Found room code in URL");
+    }
 
     // Spawn menu camera
     commands.spawn((Camera2d::default(), OnlineMenuCamera));
@@ -345,7 +408,7 @@ pub fn handle_online_menu_buttons(
         }
     }
 
-    // Handle Join Game button - show input section
+    // Handle Join Game button - show input section and trigger mobile keyboard
     for interaction in join_query.iter() {
         if *interaction == Interaction::Pressed {
             tracing::info!("Join Game clicked - showing room code input");
@@ -353,6 +416,9 @@ pub fn handle_online_menu_buttons(
                 node.display = Display::Flex;
             }
             online_state.input_room_code.clear();
+            // Trigger mobile keyboard by focusing hidden input
+            js_interop::set_code_input_value("");
+            js_interop::focus_code_input();
         }
     }
 
@@ -439,6 +505,28 @@ pub fn handle_online_menu_buttons(
         online_state.is_host = false;
         next_network_role.set(NetworkRole::Guest);
         next_app_state.set(AppState::OnlineLobby);
+    }
+
+    // Sync from hidden HTML input (for mobile keyboard support)
+    // This polls the hidden input value and syncs to game state
+    let html_input_value = js_interop::get_code_input_value();
+    if !html_input_value.is_empty() && html_input_value != online_state.input_room_code {
+        // Take at most 4 chars, uppercase
+        online_state.input_room_code = html_input_value
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .take(4)
+            .collect::<String>()
+            .to_uppercase();
+    }
+
+    // Show input section if we have a pre-filled code from URL (first frame handling)
+    if !online_state.input_room_code.is_empty() {
+        for mut node in input_section.iter_mut() {
+            if node.display == Display::None {
+                node.display = Display::Flex;
+            }
+        }
     }
 
     // Update room code display
@@ -581,6 +669,37 @@ pub fn setup_online_lobby(mut commands: Commands, online_state: Res<OnlineState>
                 },
             ));
 
+            // Copy Link button (host only)
+            if online_state.is_host {
+                parent
+                    .spawn((
+                        Button,
+                        Node {
+                            width: Val::Px(200.0),
+                            height: Val::Px(50.0),
+                            margin: UiRect::bottom(Val::Px(15.0)),
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            border: UiRect::all(Val::Px(2.0)),
+                            ..default()
+                        },
+                        BorderColor::all(Color::srgba(0.4, 0.8, 1.0, 0.8)),
+                        BorderRadius::all(Val::Px(8.0)),
+                        BackgroundColor(BUTTON_COLOR),
+                        CopyLinkButton,
+                    ))
+                    .with_children(|btn| {
+                        btn.spawn((
+                            Text::new("📋 Copy Link"),
+                            TextFont {
+                                font_size: 18.0,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
+                        ));
+                    });
+            }
+
             // Cancel button
             spawn_back_button(parent, "Cancel", CancelLobbyButton);
         });
@@ -617,7 +736,9 @@ pub fn handle_lobby_buttons(
     mut commands: Commands,
     mut next_app_state: ResMut<NextState<AppState>>,
     mut next_network_role: ResMut<NextState<NetworkRole>>,
+    online_state: Res<OnlineState>,
     cancel_query: Query<&Interaction, (Changed<Interaction>, With<CancelLobbyButton>)>,
+    copy_link_query: Query<&Interaction, (Changed<Interaction>, With<CopyLinkButton>)>,
     mut button_colors: Query<
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
@@ -636,6 +757,16 @@ pub fn handle_lobby_buttons(
 
             next_network_role.set(NetworkRole::None);
             next_app_state.set(AppState::OnlineMenu);
+        }
+    }
+
+    // Handle Copy Link button
+    for interaction in copy_link_query.iter() {
+        if *interaction == Interaction::Pressed {
+            let base_url = js_interop::get_base_url();
+            let join_url = format!("{}?code={}", base_url, online_state.room_code);
+            js_interop::copy_to_clipboard(&join_url);
+            tracing::info!(url = %join_url, "Copied join link to clipboard");
         }
     }
 

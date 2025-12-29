@@ -120,6 +120,93 @@
         <div class="loading-subtext">Preparing the ice...</div>
     </div>
     
+    <!-- Hidden input for mobile keyboard trigger -->
+    <input 
+        type="text" 
+        id="room-code-input" 
+        maxlength="4" 
+        autocapitalize="characters" 
+        autocomplete="off" 
+        autocorrect="off"
+        spellcheck="false"
+        inputmode="text"
+        style="position: absolute; left: -9999px; top: -9999px; opacity: 0; pointer-events: none;"
+        aria-hidden="true"
+    />
+    
+    <script>
+        // JavaScript interop functions for Bevy WASM
+        window.curlingGameInterop = {
+            // Focus the hidden input to trigger mobile keyboard
+            focusCodeInput: function() {
+                const input = document.getElementById('room-code-input');
+                if (input) {
+                    // Reset value
+                    input.value = '';
+                    // Move input to visible area temporarily to trigger keyboard
+                    input.style.position = 'fixed';
+                    input.style.left = '50%';
+                    input.style.top = '50%';
+                    input.style.opacity = '0.01';
+                    input.style.pointerEvents = 'auto';
+                    input.focus();
+                    // Move back off-screen after a brief moment
+                    setTimeout(() => {
+                        input.style.position = 'absolute';
+                        input.style.left = '-9999px';
+                        input.style.top = '-9999px';
+                        input.style.opacity = '0';
+                        input.style.pointerEvents = 'none';
+                    }, 100);
+                }
+            },
+            
+            // Get the current value from the hidden input
+            getCodeInputValue: function() {
+                const input = document.getElementById('room-code-input');
+                return input ? input.value.toUpperCase() : '';
+            },
+            
+            // Set the input value (for URL parameter)
+            setCodeInputValue: function(val) {
+                const input = document.getElementById('room-code-input');
+                if (input) {
+                    input.value = val;
+                }
+            },
+            
+            // Read ?code= parameter from URL
+            getUrlCodeParam: function() {
+                const params = new URLSearchParams(window.location.search);
+                const code = params.get('code');
+                return code ? code.toUpperCase().substring(0, 4) : '';
+            },
+            
+            // Copy text to clipboard
+            copyToClipboard: function(text) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).catch(err => {
+                        console.error('Failed to copy to clipboard:', err);
+                    });
+                } else {
+                    // Fallback for older browsers
+                    const textarea = document.createElement('textarea');
+                    textarea.value = text;
+                    document.body.appendChild(textarea);
+                    textarea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textarea);
+                }
+            },
+            
+            // Get the base URL for creating join links
+            getBaseUrl: function() {
+                return window.location.origin + window.location.pathname;
+            }
+        };
+    </script>
+
+    
     <script type="module">
         import init from './curling-game.js';
 
