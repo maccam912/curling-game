@@ -17,7 +17,31 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Build WASM release (tests skipped because headless runners lack necessary display support)
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Install system dependencies for Bevy
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev libxkbcommon-dev libasound2-dev libudev-dev
+
+      - name: Run tests
+        run: cargo test --locked
+
   build:
     name: Build WASM
     runs-on: ubuntu-latest
@@ -65,7 +89,7 @@ jobs:
   # Deploy to GitHub Pages
   deploy:
     name: Deploy to GitHub Pages
-    needs: build
+    needs: [build, test]
     runs-on: ubuntu-latest
     environment:
       name: github-pages
