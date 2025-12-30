@@ -1384,19 +1384,24 @@ mod proptests {
     proptest! {
         #[test]
         fn scoring_bounded_by_eight(
-            stones in prop::collection::vec(
-                (prop::bool::ANY, -2.0f32..2.0, -2.0f32..2.0),
-                0..16
+            stones_t1 in prop::collection::vec(
+                (-2.0f32..2.0, -2.0f32..2.0),
+                0..=8
+            ),
+            stones_t2 in prop::collection::vec(
+                (-2.0f32..2.0, -2.0f32..2.0),
+                0..=8
             )
         ) {
             let tee = Vec2::new(0.0, helpers::tee_line_far());
-            let stone_positions: Vec<(Team, Vec2)> = stones
-                .into_iter()
-                .map(|(is_team1, dx, dy)| {
-                    let team = if is_team1 { Team::One } else { Team::Two };
-                    (team, tee + Vec2::new(dx, dy))
-                })
-                .collect();
+            let mut stone_positions = Vec::new();
+
+            for (dx, dy) in stones_t1 {
+                stone_positions.push((Team::One, tee + Vec2::new(dx, dy)));
+            }
+            for (dx, dy) in stones_t2 {
+                stone_positions.push((Team::Two, tee + Vec2::new(dx, dy)));
+            }
 
             let (team1, team2) = helpers::score_end(&stone_positions);
 
