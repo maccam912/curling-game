@@ -7,6 +7,7 @@ This project is a 3D curling game built using the **Rust** programming language 
 
 ### Prerequisites
 *   Rust toolchain (stable)
+*   System dependencies for Linux (see below)
 
 ### Commands
 *   **Run the Game (Debug - Recommended):**
@@ -31,6 +32,34 @@ This project is a 3D curling game built using the **Rust** programming language 
     ```bash
     cargo fmt
     ```
+
+### System Dependencies (Linux)
+
+Bevy requires system libraries for windowing and audio. **Only install if `cargo test` fails** with errors like:
+
+```
+# Wayland missing:
+The system library `wayland-client` required by crate `wayland-sys` was not found.
+
+# ALSA missing:
+The system library `alsa` required by crate `alsa-sys` was not found.
+
+# udev missing:
+Could not find `libudev.pc` or similar pkg-config error for libudev
+```
+
+If you see these errors, install the dependencies:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install libwayland-dev libxkbcommon-dev libasound2-dev libudev-dev
+
+# Fedora
+sudo dnf install wayland-devel libxkbcommon-devel alsa-lib-devel systemd-devel
+```
+
+> [!NOTE]
+> These are only needed for building/testing on Linux. WASM builds (for web deployment) don't require these.
 
 ## Project Structure
 
