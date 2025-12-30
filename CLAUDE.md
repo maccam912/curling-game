@@ -89,6 +89,21 @@ Stones leaving the sheet boundaries are immediately despawned.
 - `bevy_rapier2d = "0.32.0"` - 2D physics (used for top-down curling physics)
 - `bevy_renet` (optional) - Multiplayer support (feature: `multiplayer`)
 
+### System Dependencies (Linux)
+
+Bevy requires system libraries for windowing and audio. Install before running tests:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install libwayland-dev libxkbcommon-dev libasound2-dev libudev-dev
+
+# Fedora
+sudo dnf install wayland-devel libxkbcommon-devel alsa-lib-devel systemd-devel
+```
+
+> [!NOTE]
+> These are only needed for building/testing on Linux. WASM builds (for web deployment) don't require these.
+
 ## Testing
 
 Unit tests are in `src/main.rs` in the `tests` module. They cover:
