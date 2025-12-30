@@ -35,7 +35,20 @@ This project is a 3D curling game built using the **Rust** programming language 
 
 ### System Dependencies (Linux)
 
-Bevy requires system libraries for windowing and audio. Install before building or running tests:
+Bevy requires system libraries for windowing and audio. **Only install if `cargo test` fails** with errors like:
+
+```
+# Wayland missing:
+The system library `wayland-client` required by crate `wayland-sys` was not found.
+
+# ALSA missing:
+The system library `alsa` required by crate `alsa-sys` was not found.
+
+# udev missing:
+Could not find `libudev.pc` or similar pkg-config error for libudev
+```
+
+If you see these errors, install the dependencies:
 
 ```bash
 # Ubuntu/Debian

@@ -91,7 +91,20 @@ Stones leaving the sheet boundaries are immediately despawned.
 
 ### System Dependencies (Linux)
 
-Bevy requires system libraries for windowing and audio. Install before running tests:
+Bevy requires system libraries for windowing and audio. **Only install if `cargo test` fails** with errors like:
+
+```
+# Wayland missing:
+The system library `wayland-client` required by crate `wayland-sys` was not found.
+
+# ALSA missing:
+The system library `alsa` required by crate `alsa-sys` was not found.
+
+# udev missing:
+Could not find `libudev.pc` or similar pkg-config error for libudev
+```
+
+If you see these errors, install the dependencies:
 
 ```bash
 # Ubuntu/Debian
