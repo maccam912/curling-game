@@ -66,6 +66,7 @@ src/
         - `camera.rs`: Camera transitions (`camera_control_system`)
         - `game_logic.rs`: Rule enforcement (`resolve_shot`, `check_out_of_bounds`, `detect_shot_end`)
         - `ui.rs`: UI updates (`update_ui`, `update_window_title`, `update_broom_visual`)
+        - `ai.rs`: AI opponent logic (`ai_turn_system`, `setup_ai_game`, shot decision logic)
 *   **Logging:** Structured logging using the `tracing` crate. Set log level with `RUST_LOG` environment variable (e.g., `RUST_LOG=curling_game=debug`).
 *   **Testing:** Unit tests are in `src/lib.rs` in the `tests` module, covering team alternation, coordinate calculations, rule predicates, physics constants, and ice friction physics (71 tests total).
 

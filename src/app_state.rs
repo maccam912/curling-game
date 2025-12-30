@@ -19,6 +19,8 @@ pub enum AppState {
     MainMenu,
     /// Local pass-and-play mode (hot-seat multiplayer).
     PassAndPlay,
+    /// Single player vs AI mode.
+    VsAI,
     /// Online multiplayer menu (create/join game).
     OnlineMenu,
     /// Lobby waiting for opponent to connect.

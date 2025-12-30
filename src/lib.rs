@@ -102,6 +102,7 @@ impl Plugin for CurlingPlugin {
             .insert_resource(resources::CameraState::default())
             .insert_resource(resources::TouchState::default())
             .insert_resource(resources::OnlineState::default())
+            .insert_resource(resources::PredictionState::default())
             .insert_resource(viewport::ViewportConfig::default())
             .insert_resource(Time::<Fixed>::from_hz(60.0))
             // ================================================================
@@ -144,7 +145,10 @@ impl Plugin for CurlingPlugin {
             )
             .add_systems(
                 Update,
-                (systems::poll_peer_events, systems::handle_lobby_buttons)
+                (
+                    systems::poll_lobby_peer_events,
+                    systems::handle_lobby_buttons,
+                )
                     .run_if(in_state(app_state::AppState::OnlineLobby)),
             )
             .add_systems(
@@ -194,8 +198,68 @@ impl Plugin for CurlingPlugin {
                     systems::update_score_summary_panel,
                     systems::update_game_over_panel,
                     systems::apply_responsive_ui,
+                    systems::update_prediction,
+                    systems::update_ghost_stone_visual,
                 )
                     .run_if(in_state(app_state::AppState::PassAndPlay)),
+            )
+            // ================================================================
+            // VS AI STATE (Single player vs computer)
+            // ================================================================
+            .add_systems(
+                OnEnter(app_state::AppState::VsAI),
+                (
+                    systems::setup_scene,
+                    systems::configure_rapier,
+                    systems::setup_ui,
+                    systems::randomize_first_team,
+                    systems::setup_ai_game,
+                ),
+            )
+            // Physics systems for VS AI (FPS-independent)
+            .add_systems(
+                FixedUpdate,
+                (
+                    systems::ice_friction_system,
+                    systems::track_throwing_stone,
+                    systems::detect_stone_collision,
+                    systems::check_out_of_bounds,
+                    systems::detect_shot_end,
+                )
+                    .run_if(in_state(app_state::AppState::VsAI)),
+            )
+            // Input systems for VS AI (only run on human turns)
+            .add_systems(
+                Update,
+                (
+                    systems::handle_calling_input,
+                    systems::handle_aiming_input,
+                    systems::handle_touch_input,
+                    systems::handle_broom_drag,
+                )
+                    .run_if(in_state(app_state::AppState::VsAI))
+                    .run_if(systems::run_if_human_turn),
+            )
+            // Core gameplay systems for VS AI (always run)
+            .add_systems(
+                Update,
+                (
+                    systems::viewport_detection_system,
+                    systems::update_window_title,
+                    systems::update_broom_visual,
+                    systems::update_stone_visual_rotation,
+                    systems::resolve_shot,
+                    systems::handle_score_confirmation,
+                    systems::camera_control_system,
+                    systems::update_ui,
+                    systems::update_score_summary_panel,
+                    systems::update_game_over_panel,
+                    systems::apply_responsive_ui,
+                    systems::ai_turn_system,
+                    systems::update_prediction,
+                    systems::update_ghost_stone_visual,
+                )
+                    .run_if(in_state(app_state::AppState::VsAI)),
             )
             // ================================================================
             // ONLINE GAME STATE (Multiplayer)
@@ -208,6 +272,7 @@ impl Plugin for CurlingPlugin {
                     systems::setup_ui,
                     systems::setup_online_game,
                     systems::spawn_your_team_indicator,
+                    systems::spawn_connection_status_indicator,
                 ),
             )
             // Physics systems for online game (FPS-independent)
@@ -236,6 +301,11 @@ impl Plugin for CurlingPlugin {
                     systems::online_camera_control,
                     systems::send_broom_updates,
                     systems::apply_broom_updates,
+                    // Disconnection detection and UI
+                    systems::detect_disconnection,
+                    systems::update_connection_status_ui,
+                    systems::show_disconnection_overlay,
+                    systems::handle_disconnection_return_button,
                 )
                     .run_if(in_state(app_state::AppState::OnlineGame)),
             )
@@ -266,6 +336,8 @@ impl Plugin for CurlingPlugin {
                     systems::update_score_summary_panel,
                     systems::update_game_over_panel,
                     systems::apply_responsive_ui,
+                    systems::update_prediction,
+                    systems::update_ghost_stone_visual,
                 )
                     .run_if(in_state(app_state::AppState::OnlineGame)),
             )

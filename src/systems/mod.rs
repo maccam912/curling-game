@@ -13,7 +13,10 @@
 //! - `menu`: Main menu UI and navigation
 //! - `online`: Online multiplayer menu and lobby
 //! - `online_game`: Online game synchronization
+//! - `ai`: AI opponent for single-player mode
+//! - `prediction`: Ghost stone trajectory prediction
 
+pub mod ai;
 pub mod camera;
 pub mod game_logic;
 pub mod input;
@@ -21,11 +24,13 @@ pub mod menu;
 pub mod online;
 pub mod online_game;
 pub mod physics;
+pub mod prediction;
 pub mod setup;
 pub mod ui;
 pub mod viewport;
 
 // Re-export all systems for convenient access
+pub use ai::*;
 pub use camera::*;
 pub use game_logic::*;
 pub use input::*;
@@ -33,6 +38,7 @@ pub use menu::*;
 pub use online::*;
 pub use online_game::*;
 pub use physics::*;
+pub use prediction::*;
 pub use setup::*;
 pub use ui::*;
 pub use viewport::*;

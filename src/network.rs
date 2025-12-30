@@ -93,8 +93,40 @@ pub fn close_socket(commands: &mut Commands, socket_entity: Entity) {
 // PEER EVENTS
 // ============================================================================
 
+/// Result of polling peer events.
+#[derive(Debug, Clone)]
+pub enum PeerEvent {
+    /// A peer connected.
+    Connected(PeerId),
+    /// A peer disconnected.
+    Disconnected(PeerId),
+}
+
+/// Polls the socket for peer connection/disconnection events.
+/// Returns all events that occurred since last poll.
+pub fn poll_peer_events(socket: &mut MatchboxSocket) -> Vec<PeerEvent> {
+    let mut events = Vec::new();
+    let peers = socket.update_peers();
+    for (peer_id, state) in peers {
+        match state {
+            PeerState::Connected => {
+                tracing::info!(peer = ?peer_id, "Peer connected!");
+                events.push(PeerEvent::Connected(peer_id));
+            }
+            PeerState::Disconnected => {
+                tracing::warn!(peer = ?peer_id, "Peer disconnected");
+                events.push(PeerEvent::Disconnected(peer_id));
+            }
+        }
+    }
+    events
+}
+
 /// Polls the socket for peer connection events.
 /// Returns Some(PeerId) if a peer connected, None otherwise.
+///
+/// Note: Consider using `poll_peer_events` for full event handling.
+#[deprecated(note = "Use poll_peer_events for full connection/disconnection handling")]
 pub fn poll_peer_connected(socket: &mut MatchboxSocket) -> Option<PeerId> {
     let peers = socket.update_peers();
     for (peer_id, state) in peers {

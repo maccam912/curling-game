@@ -285,6 +285,13 @@ pub struct HammerText;
 #[derive(Component)]
 pub struct StoneVisual;
 
+/// Marker component for the ghost stone prediction visual.
+///
+/// The ghost stone shows where the current shot is predicted to land
+/// based on trajectory simulation.
+#[derive(Component)]
+pub struct GhostStone;
+
 // ============================================================================
 // HUD COMPONENTS
 // ============================================================================
@@ -394,3 +401,23 @@ pub struct CompactOnMobile;
 /// This panel may need to be repositioned on mobile.
 #[derive(Component)]
 pub struct BottomControlPanel;
+
+// ============================================================================
+// ONLINE GAME UI COMPONENTS
+// ============================================================================
+
+/// Marker for the connection status indicator in online games.
+///
+/// Shows green when connected, red when disconnected.
+#[derive(Component)]
+pub struct ConnectionStatusIndicator;
+
+/// Marker for the disconnection overlay UI.
+///
+/// Shown when the opponent disconnects during a game.
+#[derive(Component)]
+pub struct DisconnectionOverlay;
+
+/// Marker for the "Return to Menu" button on disconnection overlay.
+#[derive(Component)]
+pub struct DisconnectionReturnButton;

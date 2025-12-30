@@ -10,11 +10,14 @@
 use bevy::prelude::*;
 use bevy_matchbox::prelude::*;
 
-use crate::app_state::NetworkRole;
+use crate::app_state::{AppState, NetworkRole};
 use crate::components::*;
 use crate::constants::*;
 use crate::helpers::*;
-use crate::network::{GameMessage, NetworkSocket, StoneState, receive_messages, send_message};
+use crate::network::{
+    GameMessage, NetworkSocket, PeerEvent, StoneState, poll_peer_events, receive_messages,
+    send_message,
+};
 use crate::resources::*;
 
 // ============================================================================
@@ -639,6 +642,218 @@ pub fn cleanup_your_team_indicator(
 }
 
 // ============================================================================
+// DISCONNECTION DETECTION
+// ============================================================================
+
+/// Detects when the opponent disconnects during a game.
+///
+/// Sets online_state.opponent_disconnected = true when this occurs.
+pub fn detect_disconnection(
+    mut socket_query: Query<&mut MatchboxSocket, With<NetworkSocket>>,
+    mut online_state: ResMut<OnlineState>,
+) {
+    let Ok(mut socket) = socket_query.single_mut() else {
+        return;
+    };
+
+    for event in poll_peer_events(&mut socket) {
+        match event {
+            PeerEvent::Connected(_peer_id) => {
+                // Peer reconnected (unusual during game, but handle it)
+                online_state.opponent_disconnected = false;
+                tracing::info!("Peer reconnected during game");
+            }
+            PeerEvent::Disconnected(_peer_id) => {
+                online_state.opponent_disconnected = true;
+                tracing::warn!("Opponent disconnected during game!");
+            }
+        }
+    }
+}
+
+// ============================================================================
+// CONNECTION STATUS UI
+// ============================================================================
+
+const CONNECTION_INDICATOR_SIZE: f32 = 12.0;
+const CONNECTED_COLOR: Color = Color::srgb(0.2, 0.8, 0.2); // Green
+const DISCONNECTED_COLOR: Color = Color::srgb(0.9, 0.2, 0.2); // Red
+
+/// Spawns the connection status indicator in the top-right corner.
+pub fn spawn_connection_status_indicator(mut commands: Commands) {
+    commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            top: Val::Px(10.0),
+            right: Val::Px(10.0),
+            width: Val::Px(CONNECTION_INDICATOR_SIZE),
+            height: Val::Px(CONNECTION_INDICATOR_SIZE),
+            border: UiRect::all(Val::Px(2.0)),
+            ..default()
+        },
+        BorderRadius::all(Val::Px(CONNECTION_INDICATOR_SIZE / 2.0)),
+        BorderColor::all(Color::srgba(1.0, 1.0, 1.0, 0.5)),
+        BackgroundColor(CONNECTED_COLOR),
+        ConnectionStatusIndicator,
+    ));
+}
+
+/// Updates the connection status indicator color based on connection state.
+pub fn update_connection_status_ui(
+    online_state: Res<OnlineState>,
+    mut indicator_query: Query<&mut BackgroundColor, With<ConnectionStatusIndicator>>,
+) {
+    for mut bg in indicator_query.iter_mut() {
+        bg.0 = if online_state.opponent_disconnected {
+            DISCONNECTED_COLOR
+        } else {
+            CONNECTED_COLOR
+        };
+    }
+}
+
+/// Shows the disconnection overlay when opponent disconnects.
+pub fn show_disconnection_overlay(
+    mut commands: Commands,
+    online_state: Res<OnlineState>,
+    existing_overlay: Query<Entity, With<DisconnectionOverlay>>,
+) {
+    // Only show if disconnected and overlay doesn't already exist
+    if !online_state.opponent_disconnected || !existing_overlay.is_empty() {
+        return;
+    }
+
+    // Spawn fullscreen overlay
+    commands
+        .spawn((
+            Node {
+                position_type: PositionType::Absolute,
+                width: Val::Percent(100.0),
+                height: Val::Percent(100.0),
+                flex_direction: FlexDirection::Column,
+                justify_content: JustifyContent::Center,
+                align_items: AlignItems::Center,
+                ..default()
+            },
+            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.85)),
+            DisconnectionOverlay,
+            // Ensure it's on top of other UI
+            ZIndex(100),
+        ))
+        .with_children(|parent| {
+            // Warning icon
+            parent.spawn((
+                Text::new("⚠"),
+                TextFont {
+                    font_size: 72.0,
+                    ..default()
+                },
+                TextColor(Color::srgb(1.0, 0.8, 0.2)),
+                Node {
+                    margin: UiRect::bottom(Val::Px(20.0)),
+                    ..default()
+                },
+            ));
+
+            // Title
+            parent.spawn((
+                Text::new("Connection Lost"),
+                TextFont {
+                    font_size: 48.0,
+                    ..default()
+                },
+                TextColor(Color::WHITE),
+                Node {
+                    margin: UiRect::bottom(Val::Px(15.0)),
+                    ..default()
+                },
+            ));
+
+            // Subtitle
+            parent.spawn((
+                Text::new("Your opponent has disconnected"),
+                TextFont {
+                    font_size: 22.0,
+                    ..default()
+                },
+                TextColor(Color::srgba(1.0, 1.0, 1.0, 0.7)),
+                Node {
+                    margin: UiRect::bottom(Val::Px(40.0)),
+                    ..default()
+                },
+            ));
+
+            // Return to menu button
+            parent
+                .spawn((
+                    Button,
+                    Node {
+                        width: Val::Px(250.0),
+                        height: Val::Px(60.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        border: UiRect::all(Val::Px(2.0)),
+                        ..default()
+                    },
+                    BorderColor::all(Color::srgba(1.0, 1.0, 1.0, 0.3)),
+                    BorderRadius::all(Val::Px(10.0)),
+                    BackgroundColor(Color::srgb(0.2, 0.4, 0.6)),
+                    DisconnectionReturnButton,
+                ))
+                .with_children(|btn| {
+                    btn.spawn((
+                        Text::new("Return to Main Menu"),
+                        TextFont {
+                            font_size: 22.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                });
+        });
+
+    tracing::info!("Showed disconnection overlay");
+}
+
+/// Handles the return button on the disconnection overlay.
+pub fn handle_disconnection_return_button(
+    mut commands: Commands,
+    mut next_app_state: ResMut<NextState<AppState>>,
+    mut next_network_role: ResMut<NextState<NetworkRole>>,
+    button_query: Query<&Interaction, (Changed<Interaction>, With<DisconnectionReturnButton>)>,
+    socket_query: Query<Entity, With<NetworkSocket>>,
+    mut button_colors: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<DisconnectionReturnButton>),
+    >,
+) {
+    // Handle click
+    for interaction in button_query.iter() {
+        if *interaction == Interaction::Pressed {
+            tracing::info!("Returning to main menu after disconnection");
+
+            // Close the socket
+            for entity in socket_query.iter() {
+                commands.entity(entity).despawn();
+            }
+
+            // Return to main menu
+            next_network_role.set(NetworkRole::None);
+            next_app_state.set(AppState::MainMenu);
+        }
+    }
+
+    // Visual feedback
+    for (interaction, mut bg) in button_colors.iter_mut() {
+        match *interaction {
+            Interaction::Hovered => bg.0 = Color::srgb(0.3, 0.5, 0.7),
+            Interaction::Pressed => bg.0 = Color::srgb(0.15, 0.3, 0.45),
+            Interaction::None => bg.0 = Color::srgb(0.2, 0.4, 0.6),
+        }
+    }
+}
+
+// ============================================================================
 // CLEANUP
 // ============================================================================
 
@@ -646,9 +861,19 @@ pub fn cleanup_your_team_indicator(
 pub fn cleanup_online_game(
     mut commands: Commands,
     socket_query: Query<Entity, With<NetworkSocket>>,
+    indicator_query: Query<Entity, With<ConnectionStatusIndicator>>,
+    overlay_query: Query<Entity, With<DisconnectionOverlay>>,
 ) {
     // Despawn the socket
     for entity in socket_query.iter() {
+        commands.entity(entity).despawn();
+    }
+    // Despawn connection indicator
+    for entity in indicator_query.iter() {
+        commands.entity(entity).despawn();
+    }
+    // Despawn disconnection overlay if present
+    for entity in overlay_query.iter() {
         commands.entity(entity).despawn();
     }
     tracing::info!("Online game cleaned up");

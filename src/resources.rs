@@ -62,6 +62,10 @@ pub struct GameState {
     pub scoring_entities: Vec<Entity>,
     /// History of scores for each end: Vec<(team1_points, team2_points)>.
     pub end_scores: Vec<(u32, u32)>,
+    /// Which team is controlled by AI (None = human vs human).
+    pub ai_team: Option<Team>,
+    /// Timer for AI "thinking" delay before executing a shot.
+    pub ai_think_timer: f32,
 }
 
 impl Default for GameState {
@@ -87,6 +91,8 @@ impl Default for GameState {
             pending_end_score: None,
             scoring_entities: Vec::new(),
             end_scores: Vec::new(),
+            ai_team: None,
+            ai_think_timer: 0.0,
         }
     }
 }
@@ -263,6 +269,8 @@ pub struct OnlineState {
     pub is_host: bool,
     /// Whether the opponent has connected.
     pub opponent_connected: bool,
+    /// Whether the opponent has disconnected (connection lost during game).
+    pub opponent_disconnected: bool,
     /// Room code being typed by the user when joining.
     pub input_room_code: String,
     /// Which team the local player is (Host = Team1, Guest = Team2).
@@ -285,6 +293,7 @@ impl Default for OnlineState {
             room_code: String::new(),
             is_host: false,
             opponent_connected: false,
+            opponent_disconnected: false,
             input_room_code: String::new(),
             local_team: None,
             pending_shot: None,
@@ -302,4 +311,23 @@ pub struct PendingShot {
     pub angle: f32,
     pub weight: f32,
     pub curl: crate::components::CurlDirection,
+}
+
+// ============================================================================
+// PREDICTION STATE
+// ============================================================================
+
+/// State for ghost stone trajectory prediction.
+///
+/// This resource tracks the predicted final position of the current shot
+/// and related confidence metrics.
+#[derive(Resource, Default)]
+pub struct PredictionState {
+    /// Predicted final position of the current shot.
+    pub predicted_position: Option<Vec2>,
+    /// Confidence in the prediction (1.0 = high, lower = likely collision).
+    /// Reduces when the predicted path intersects existing stones.
+    pub confidence: f32,
+    /// Whether the prediction is currently valid and should be displayed.
+    pub is_valid: bool,
 }

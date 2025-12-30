@@ -26,6 +26,10 @@ pub struct PassAndPlayButton;
 #[derive(Component)]
 pub struct OnlineMultiplayerButton;
 
+/// Marker for the "Vs AI" button.
+#[derive(Component)]
+pub struct VsAIButton;
+
 // ============================================================================
 // SYSTEMS
 // ============================================================================
@@ -85,6 +89,15 @@ pub fn setup_main_menu(mut commands: Commands) {
                 "Local hot-seat multiplayer",
                 PassAndPlayButton,
                 Color::srgb(0.2, 0.6, 0.4),
+            );
+
+            // Vs AI button
+            spawn_menu_button(
+                parent,
+                "Vs AI",
+                "Play against the computer",
+                VsAIButton,
+                Color::srgb(0.6, 0.3, 0.5),
             );
 
             // Online Multiplayer button
@@ -153,6 +166,7 @@ fn spawn_menu_button<T: Component>(
 pub fn handle_menu_buttons(
     mut next_state: ResMut<NextState<AppState>>,
     pass_play_query: Query<&Interaction, (Changed<Interaction>, With<PassAndPlayButton>)>,
+    vs_ai_query: Query<&Interaction, (Changed<Interaction>, With<VsAIButton>)>,
     online_query: Query<&Interaction, (Changed<Interaction>, With<OnlineMultiplayerButton>)>,
     mut button_colors: Query<
         (&Interaction, &mut BackgroundColor),
@@ -164,6 +178,14 @@ pub fn handle_menu_buttons(
         if *interaction == Interaction::Pressed {
             tracing::info!("Pass and Play selected");
             next_state.set(AppState::PassAndPlay);
+        }
+    }
+
+    // Handle Vs AI button
+    for interaction in vs_ai_query.iter() {
+        if *interaction == Interaction::Pressed {
+            tracing::info!("Vs AI selected");
+            next_state.set(AppState::VsAI);
         }
     }
 

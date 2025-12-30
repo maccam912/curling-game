@@ -269,6 +269,24 @@ pub fn setup_scene(
     ));
     debug!("Created broom indicator");
 
+    // Ghost Stone prediction indicator
+    let ghost_mesh = meshes.add(Cylinder::new(STONE_RADIUS, STONE_HEIGHT));
+    let ghost_material = materials.add(StandardMaterial {
+        base_color: Color::srgba(0.5, 0.8, 1.0, 0.4), // Semi-transparent blue
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        emissive: bevy::color::LinearRgba::new(0.1, 0.2, 0.4, 1.0),
+        ..default()
+    });
+    commands.spawn((
+        GhostStone,
+        Mesh3d(ghost_mesh),
+        MeshMaterial3d(ghost_material),
+        Transform::from_xyz(0.0, TEE_FROM_CENTER, 0.15)
+            .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+        Visibility::Hidden, // Start hidden until prediction is running
+    ));
+    debug!("Created ghost stone prediction indicator");
+
     info!("Game scene setup complete");
 }
 

@@ -8,7 +8,7 @@ use bevy_matchbox::prelude::*;
 use rand::Rng;
 
 use crate::app_state::{AppState, NetworkRole};
-use crate::network::{NetworkSocket, create_socket, poll_peer_connected};
+use crate::network::{NetworkSocket, PeerEvent, create_socket, poll_peer_events};
 use crate::resources::OnlineState;
 
 // ============================================================================
@@ -706,7 +706,7 @@ pub fn setup_online_lobby(mut commands: Commands, online_state: Res<OnlineState>
 }
 
 /// Polls for peer connection events and transitions to game when connected.
-pub fn poll_peer_events(
+pub fn poll_lobby_peer_events(
     mut socket_query: Query<&mut MatchboxSocket, With<NetworkSocket>>,
     mut online_state: ResMut<OnlineState>,
     mut status_text: Query<&mut Text, With<LobbyStatusText>>,
@@ -716,18 +716,34 @@ pub fn poll_peer_events(
         return;
     };
 
-    // Check for peer connection events
-    if let Some(_peer_id) = poll_peer_connected(&mut socket) {
-        online_state.opponent_connected = true;
-        tracing::info!("Opponent connected! Starting game...");
+    // Check for peer connection/disconnection events
+    for event in poll_peer_events(&mut socket) {
+        match event {
+            PeerEvent::Connected(_peer_id) => {
+                online_state.opponent_connected = true;
+                online_state.opponent_disconnected = false;
+                tracing::info!("Opponent connected! Starting game...");
 
-        // Update status text
-        for mut text in status_text.iter_mut() {
-            **text = "Opponent connected! Starting...".to_string();
+                // Update status text
+                for mut text in status_text.iter_mut() {
+                    **text = "Opponent connected! Starting...".to_string();
+                }
+
+                // Transition to the online game
+                next_app_state.set(AppState::OnlineGame);
+            }
+            PeerEvent::Disconnected(_peer_id) => {
+                // If opponent was connected and then disconnected, update status
+                if online_state.opponent_connected {
+                    online_state.opponent_disconnected = true;
+                    tracing::warn!("Opponent disconnected in lobby");
+
+                    for mut text in status_text.iter_mut() {
+                        **text = "Opponent disconnected. Waiting for reconnect...".to_string();
+                    }
+                }
+            }
         }
-
-        // Transition to the online game
-        next_app_state.set(AppState::OnlineGame);
     }
 }
 
