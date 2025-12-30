@@ -8,8 +8,9 @@ use rand::Rng;
 
 use crate::components::{CurlDirection, Phase, ShotType, Stone, Team};
 use crate::constants::*;
-use crate::helpers::{hog_line_far, snapshot_stones, spawn_stone, tee_line_far};
+use crate::helpers::{back_line_far, hog_line_far, snapshot_stones, spawn_stone, tee_line_far};
 use crate::resources::{GameState, StoneAssets};
+use crate::systems::prediction::predict_stone_trajectory;
 
 // ============================================================================
 // CONSTANTS
@@ -32,8 +33,86 @@ const AI_MISTAKE_CHANCE: f32 = 0.15;
 const AI_TARGET_MISS: f32 = 0.3;
 
 // ============================================================================
-// AI SETUP
+// HELPER FUNCTIONS
 // ============================================================================
+
+/// Calculates the broom position needed to land a stone at the target position.
+///
+/// The broom position determines the throw angle and weight. Due to curl and
+/// ice physics, the stone's final resting place differs from where the broom
+/// is placed. This function uses trajectory prediction to find the optimal
+/// broom position that results in the stone landing at the target.
+///
+/// # Arguments
+/// * `target_pos` - Where we want the stone to end up
+/// * `curl` - The curl direction for the shot
+/// * `existing_stones` - Positions of stones already on the ice
+///
+/// # Returns
+/// The broom position that should result in the stone landing near target_pos
+fn calculate_broom_for_target(
+    target_pos: Vec2,
+    curl: CurlDirection,
+    existing_stones: &[Vec2],
+) -> Vec2 {
+    // Start with broom at target and refine using prediction
+    let start_pos = Vec2::new(0.0, DELIVERY_START_Y);
+
+    // The broom Y position determines weight
+    // The broom X position (combined with Y) determines angle
+
+    // We'll iterate to find the broom position that gets closest to target
+    let mut best_broom = target_pos;
+    let mut best_distance = f32::MAX;
+
+    // Use a grid search around the target to find optimal broom position
+    // The curl will deflect the stone, so we need to compensate
+    let angular_velocity = curl.angular_velocity();
+
+    // Due to curl, if we're curling left (positive angular), the stone will
+    // end up left of where a straight shot would go, so we need to aim
+    // right of the target to compensate
+
+    // Search in the opposite direction of curl
+    for x_offset in [-1.5f32, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5] {
+        for y_offset in [-0.5f32, -0.25, 0.0, 0.25, 0.5] {
+            let test_broom = Vec2::new(
+                target_pos.x + x_offset * (if angular_velocity > 0.0 { 1.0 } else { -1.0 }),
+                target_pos.y + y_offset,
+            );
+
+            // Calculate throw parameters from this broom position
+            let direction = test_broom - start_pos;
+            let angle_rad = direction.x.atan2(direction.y);
+
+            // Calculate weight from broom Y position
+            let min_y = hog_line_far();
+            let max_y = back_line_far();
+            let range = max_y - min_y;
+            let normalized = ((test_broom.y - min_y) / range).clamp(0.0, 1.0);
+            let weight = WEIGHT_MIN + normalized * (WEIGHT_MAX - WEIGHT_MIN);
+
+            // Convert weight to speed
+            let speed = WEIGHT_MIN_SPEED
+                + (weight - WEIGHT_MIN) / (WEIGHT_MAX - WEIGHT_MIN)
+                    * (WEIGHT_MAX_SPEED - WEIGHT_MIN_SPEED);
+            let velocity = Vec2::new(angle_rad.sin() * speed, angle_rad.cos() * speed);
+
+            // Predict where this shot would land
+            let (predicted_pos, _) =
+                predict_stone_trajectory(start_pos, velocity, angular_velocity, existing_stones);
+
+            // Check if this is closer to our target
+            let distance = predicted_pos.distance(target_pos);
+            if distance < best_distance {
+                best_distance = distance;
+                best_broom = test_broom;
+            }
+        }
+    }
+
+    best_broom
+}
 
 /// Sets up the game for AI mode by assigning Team Two to the AI.
 pub fn setup_ai_game(mut state: ResMut<GameState>) {
@@ -139,6 +218,9 @@ pub fn ai_turn_system(
 // ============================================================================
 
 /// Calculates the best shot for the AI based on current game state.
+///
+/// Returns (broom_position, shot_type, curl_direction) where broom_position
+/// is calculated to make the stone land at the desired target position.
 fn calculate_ai_shot(
     stones: &Query<(Entity, &Transform, &Stone)>,
     ai_team: Team,
@@ -158,6 +240,9 @@ fn calculate_ai_shot(
         })
         .collect();
 
+    // Collect just Vec2 positions for trajectory prediction
+    let existing_stone_positions: Vec<Vec2> = stone_positions.iter().map(|(_, pos)| *pos).collect();
+
     // Find closest stones for each team
     let our_closest = find_closest_to_tee(&stone_positions, ai_team);
     let their_closest = find_closest_to_tee(&stone_positions, ai_team.opponent());
@@ -171,7 +256,7 @@ fn calculate_ai_shot(
     // Random chance for suboptimal decision
     let make_mistake = rng.random::<f32>() < AI_MISTAKE_CHANCE;
 
-    // Decision logic
+    // Decision logic - get the desired final position for the stone
     let (mut target, shot_type) = decide_shot(
         &stone_positions,
         our_closest,
@@ -183,7 +268,7 @@ fn calculate_ai_shot(
         &mut rng,
     );
 
-    // Add position imperfection
+    // Add position imperfection to the target
     target.x += rng.random_range(-AI_TARGET_MISS..AI_TARGET_MISS);
     target.y += rng.random_range(-AI_TARGET_MISS..AI_TARGET_MISS);
 
@@ -204,7 +289,19 @@ fn calculate_ai_shot(
         CurlDirection::InTurn
     };
 
-    (target, shot_type, curl)
+    // Calculate the broom position that will result in the stone landing at target
+    // This accounts for curl and physics effects
+    let broom_position = calculate_broom_for_target(target, curl, &existing_stone_positions);
+
+    tracing::debug!(
+        "AI target: ({:.2}, {:.2}) -> broom: ({:.2}, {:.2})",
+        target.x,
+        target.y,
+        broom_position.x,
+        broom_position.y
+    );
+
+    (broom_position, shot_type, curl)
 }
 
 /// Core decision function for shot selection.
