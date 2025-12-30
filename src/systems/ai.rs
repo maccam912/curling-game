@@ -195,11 +195,13 @@ fn calculate_ai_shot(
         tee_line_far() + BACK_FROM_TEE - STONE_RADIUS,
     );
 
-    // Choose curl direction (slight preference based on target side)
+    // Choose curl direction to curl toward center line
+    // If target is left of center, curl right (OutTurn) toward center
+    // If target is right of center, curl left (InTurn) toward center
     let curl = if target.x < 0.0 {
-        CurlDirection::InTurn
-    } else {
         CurlDirection::OutTurn
+    } else {
+        CurlDirection::InTurn
     };
 
     (target, shot_type, curl)
@@ -333,4 +335,77 @@ fn execute_ai_throw(
         state.aim_weight,
         curl
     );
+}
+
+// ============================================================================
+// TESTS
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Helper to get curl direction for a target position.
+    /// Mimics the logic in calculate_ai_shot.
+    fn curl_for_target_x(target_x: f32) -> CurlDirection {
+        if target_x < 0.0 {
+            CurlDirection::OutTurn
+        } else {
+            CurlDirection::InTurn
+        }
+    }
+
+    #[test]
+    fn ai_curl_toward_center_when_target_left() {
+        // Target on left side of sheet (negative X)
+        let curl = curl_for_target_x(-1.0);
+        // OutTurn curls right (positive X direction), toward center
+        assert_eq!(curl, CurlDirection::OutTurn);
+        assert!(
+            curl.angular_velocity() < 0.0,
+            "OutTurn should have negative angular velocity (curls right)"
+        );
+    }
+
+    #[test]
+    fn ai_curl_toward_center_when_target_right() {
+        // Target on right side of sheet (positive X)
+        let curl = curl_for_target_x(1.0);
+        // InTurn curls left (negative X direction), toward center
+        assert_eq!(curl, CurlDirection::InTurn);
+        assert!(
+            curl.angular_velocity() > 0.0,
+            "InTurn should have positive angular velocity (curls left)"
+        );
+    }
+
+    #[test]
+    fn ai_curl_toward_center_when_target_on_centerline() {
+        // Target on center line - defaults to InTurn
+        let curl = curl_for_target_x(0.0);
+        assert_eq!(curl, CurlDirection::InTurn);
+    }
+
+    #[test]
+    fn ai_curl_directions_consistent_with_physics() {
+        // Verify that our curl choices actually curl toward center
+        // by checking the angular velocity signs match expected behavior
+        //
+        // Physics: positive angular velocity = curls left (negative X)
+        //          negative angular velocity = curls right (positive X)
+
+        // Target left: we want to curl right (toward center at X=0)
+        let left_curl = curl_for_target_x(-2.0);
+        assert!(
+            left_curl.angular_velocity() < 0.0,
+            "Left target should use curl that goes right (negative angular vel)"
+        );
+
+        // Target right: we want to curl left (toward center at X=0)
+        let right_curl = curl_for_target_x(2.0);
+        assert!(
+            right_curl.angular_velocity() > 0.0,
+            "Right target should use curl that goes left (positive angular vel)"
+        );
+    }
 }
