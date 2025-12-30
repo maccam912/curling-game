@@ -984,4 +984,592 @@ mod tests {
             "Expected 10 UI text marker types for update_ui queries"
         );
     }
+
+    // ============ SCORE_END TESTS ============
+
+    #[test]
+    fn score_end_empty_house_is_blank_end() {
+        let stones: Vec<(Team, Vec2)> = vec![];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(team1, 0);
+        assert_eq!(team2, 0);
+    }
+
+    #[test]
+    fn score_end_single_stone_team1_scores_one() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        let stones = vec![(Team::One, tee)];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(team1, 1);
+        assert_eq!(team2, 0);
+    }
+
+    #[test]
+    fn score_end_single_stone_team2_scores_one() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        let stones = vec![(Team::Two, tee)];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(team1, 0);
+        assert_eq!(team2, 1);
+    }
+
+    #[test]
+    fn score_end_closest_stone_wins() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        // Team 1 stone closer to tee
+        let stones = vec![
+            (Team::One, tee + Vec2::new(0.2, 0.0)), // closer
+            (Team::Two, tee + Vec2::new(0.5, 0.0)), // farther
+        ];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(team1, 1);
+        assert_eq!(team2, 0);
+    }
+
+    #[test]
+    fn score_end_multiple_stones_count_correctly() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        // Team 1 has closest 3 stones, then Team 2 has one
+        let stones = vec![
+            (Team::One, tee + Vec2::new(0.1, 0.0)), // 1st closest
+            (Team::One, tee + Vec2::new(0.2, 0.0)), // 2nd closest
+            (Team::One, tee + Vec2::new(0.3, 0.0)), // 3rd closest
+            (Team::Two, tee + Vec2::new(0.4, 0.0)), // 4th closest
+            (Team::One, tee + Vec2::new(0.5, 0.0)), // 5th (doesn't count - after opponent)
+        ];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(
+            team1, 3,
+            "Team 1 should score 3 (three closer than Team 2's closest)"
+        );
+        assert_eq!(team2, 0);
+    }
+
+    #[test]
+    fn score_end_team2_can_score_multiple() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        let stones = vec![
+            (Team::Two, tee + Vec2::new(0.1, 0.0)), // 1st closest
+            (Team::Two, tee + Vec2::new(0.2, 0.0)), // 2nd closest
+            (Team::One, tee + Vec2::new(0.3, 0.0)), // 3rd closest - stops Team 2's count
+        ];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(team1, 0);
+        assert_eq!(team2, 2);
+    }
+
+    #[test]
+    fn score_end_stone_outside_house_doesnt_score() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        // Stone far outside house
+        let outside = tee + Vec2::new(HOUSE_RADIUS_12 + STONE_RADIUS + 1.0, 0.0);
+        let stones = vec![(Team::One, outside)];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(team1, 0, "Stone outside house shouldn't score");
+        assert_eq!(team2, 0);
+    }
+
+    #[test]
+    fn score_end_biting_stone_counts() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        // Stone just barely biting the 12-foot ring
+        let biting = tee + Vec2::new(HOUSE_RADIUS_12 + STONE_RADIUS * 0.5, 0.0);
+        let stones = vec![(Team::One, biting)];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(team1, 1, "Biting stone should score");
+        assert_eq!(team2, 0);
+    }
+
+    #[test]
+    fn score_end_all_one_team_scores_all() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        // All Team 1 stones in house, no opponent
+        let stones = vec![
+            (Team::One, tee + Vec2::new(0.1, 0.0)),
+            (Team::One, tee + Vec2::new(0.2, 0.0)),
+            (Team::One, tee + Vec2::new(0.3, 0.0)),
+            (Team::One, tee + Vec2::new(0.4, 0.0)),
+        ];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(
+            team1, 4,
+            "All 4 stones should score when no opponent in house"
+        );
+        assert_eq!(team2, 0);
+    }
+
+    #[test]
+    fn score_end_ties_on_distance_closest_wins() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        // Both teams have stone at same distance - first in list wins ties
+        // (This tests sorting stability behavior)
+        let dist = 0.3;
+        let stones = vec![
+            (Team::One, tee + Vec2::new(dist, 0.0)),
+            (Team::Two, tee + Vec2::new(0.0, dist)),
+        ];
+        let (team1, team2) = helpers::score_end(&stones);
+        // One team should score exactly 1
+        assert!(
+            (team1 == 1 && team2 == 0) || (team1 == 0 && team2 == 1),
+            "One team should score 1 on identical distances"
+        );
+    }
+
+    #[test]
+    fn score_end_stone_on_tee_beats_all() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        let stones = vec![
+            (Team::Two, tee + Vec2::new(0.5, 0.0)), // farther
+            (Team::One, tee),                       // on button
+        ];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(team1, 1);
+        assert_eq!(team2, 0);
+    }
+
+    #[test]
+    fn score_end_8_ender_possible() {
+        let tee = Vec2::new(0.0, helpers::tee_line_far());
+        // Maximum possible score: 8 stones of one team, all in house
+        let stones = vec![
+            (Team::Two, tee + Vec2::new(0.1, 0.0)),
+            (Team::Two, tee + Vec2::new(0.15, 0.0)),
+            (Team::Two, tee + Vec2::new(0.2, 0.0)),
+            (Team::Two, tee + Vec2::new(0.25, 0.0)),
+            (Team::Two, tee + Vec2::new(0.3, 0.0)),
+            (Team::Two, tee + Vec2::new(0.35, 0.0)),
+            (Team::Two, tee + Vec2::new(0.4, 0.0)),
+            (Team::Two, tee + Vec2::new(0.45, 0.0)),
+        ];
+        let (team1, team2) = helpers::score_end(&stones);
+        assert_eq!(team1, 0);
+        assert_eq!(team2, 8, "8-ender should be possible");
+    }
+
+    // ============ GAME STATE RESET TESTS ============
+
+    #[test]
+    fn game_state_reset_for_new_end() {
+        let mut state = resources::GameState::default();
+        state.shot_index = 15; // End of an end
+        state.phase = Phase::ShowingScore;
+        state.called_angle_deg = 5.0;
+        state.called_weight = 8.0;
+
+        state.reset_for_new_end();
+
+        assert_eq!(state.shot_index, 0);
+        assert_eq!(state.phase, Phase::CallingShot);
+        assert_eq!(state.called_angle_deg, 0.0);
+        assert_eq!(state.called_weight, ShotType::Draw.default_weight());
+    }
+
+    // ============ PHASE TRANSITION TESTS ============
+
+    #[test]
+    fn phase_initial_is_calling_shot() {
+        let state = resources::GameState::default();
+        assert_eq!(state.phase, Phase::CallingShot);
+    }
+
+    #[test]
+    fn phase_variants_are_distinct() {
+        assert_ne!(Phase::CallingShot, Phase::Aiming);
+        assert_ne!(Phase::Aiming, Phase::StoneMoving);
+        assert_ne!(Phase::StoneMoving, Phase::Resolve);
+        assert_ne!(Phase::Resolve, Phase::ShowingScore);
+        assert_ne!(Phase::ShowingScore, Phase::Ended);
+    }
+
+    // ============ VELOCITY CALCULATION TESTS ============
+
+    #[test]
+    fn velocity_from_weight_min_gives_min_speed() {
+        let weight = WEIGHT_MIN;
+        let weight_normalized = (weight - 1.0) / 9.0;
+        let speed = WEIGHT_MIN_SPEED + weight_normalized * (WEIGHT_MAX_SPEED - WEIGHT_MIN_SPEED);
+        assert!((speed - WEIGHT_MIN_SPEED).abs() < 0.001);
+    }
+
+    #[test]
+    fn velocity_from_weight_max_gives_max_speed() {
+        let weight = WEIGHT_MAX;
+        let weight_normalized = (weight - 1.0) / 9.0;
+        let speed = WEIGHT_MIN_SPEED + weight_normalized * (WEIGHT_MAX_SPEED - WEIGHT_MIN_SPEED);
+        assert!((speed - WEIGHT_MAX_SPEED).abs() < 0.001);
+    }
+
+    #[test]
+    fn velocity_direction_from_angle() {
+        let angle_deg: f32 = 0.0;
+        let angle_rad = angle_deg.to_radians();
+        let direction = Vec2::new(angle_rad.sin(), angle_rad.cos());
+        assert!(
+            (direction.x).abs() < 0.001,
+            "0 degrees should point straight"
+        );
+        assert!((direction.y - 1.0).abs() < 0.001);
+    }
+
+    #[test]
+    fn velocity_direction_from_positive_angle() {
+        let angle_deg: f32 = 10.0;
+        let angle_rad = angle_deg.to_radians();
+        let direction = Vec2::new(angle_rad.sin(), angle_rad.cos());
+        assert!(direction.x > 0.0, "Positive angle should deflect right");
+        assert!(direction.y > 0.0, "Should still move forward");
+    }
+
+    #[test]
+    fn velocity_direction_from_negative_angle() {
+        let angle_deg: f32 = -10.0;
+        let angle_rad = angle_deg.to_radians();
+        let direction = Vec2::new(angle_rad.sin(), angle_rad.cos());
+        assert!(direction.x < 0.0, "Negative angle should deflect left");
+        assert!(direction.y > 0.0, "Should still move forward");
+    }
+
+    // ============ END SCORE HISTORY TESTS ============
+
+    #[test]
+    fn end_scores_empty_initially() {
+        let state = resources::GameState::default();
+        assert!(state.end_scores.is_empty());
+    }
+
+    #[test]
+    fn current_end_starts_at_one() {
+        let state = resources::GameState::default();
+        assert_eq!(state.current_end, 1);
+    }
+
+    #[test]
+    fn total_ends_default() {
+        let state = resources::GameState::default();
+        assert_eq!(state.total_ends, 8);
+    }
+
+    // ============ HAMMER/FIRST THROW TESTS ============
+
+    #[test]
+    fn first_throw_team_default() {
+        let state = resources::GameState::default();
+        // Default can be either team, just verify it's valid
+        assert!(state.first_throw_team == Team::One || state.first_throw_team == Team::Two);
+    }
+
+    #[test]
+    fn team_opponent() {
+        assert_eq!(Team::One.opponent(), Team::Two);
+        assert_eq!(Team::Two.opponent(), Team::One);
+    }
+}
+
+// ============================================================================
+// PROPERTY-BASED TESTS
+// ============================================================================
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use bevy::math::Vec2;
+    use proptest::prelude::*;
+
+    // ============ SCORING INVARIANTS ============
+
+    /// Property: Only one team can score per end (never both)
+    proptest! {
+        #[test]
+        fn scoring_only_one_team_scores(
+            stones in prop::collection::vec(
+                (prop::bool::ANY, -2.0f32..2.0, -2.0f32..2.0),
+                0..16
+            )
+        ) {
+            let tee = Vec2::new(0.0, helpers::tee_line_far());
+            let stone_positions: Vec<(Team, Vec2)> = stones
+                .into_iter()
+                .map(|(is_team1, dx, dy)| {
+                    let team = if is_team1 { Team::One } else { Team::Two };
+                    (team, tee + Vec2::new(dx, dy))
+                })
+                .collect();
+
+            let (team1, team2) = helpers::score_end(&stone_positions);
+
+            // Invariant: At most one team scores
+            prop_assert!(
+                team1 == 0 || team2 == 0,
+                "Both teams scored: T1={}, T2={}",
+                team1,
+                team2
+            );
+        }
+    }
+
+    /// Property: Score is bounded by 8 (max stones per team)
+    proptest! {
+        #[test]
+        fn scoring_bounded_by_eight(
+            stones in prop::collection::vec(
+                (prop::bool::ANY, -2.0f32..2.0, -2.0f32..2.0),
+                0..16
+            )
+        ) {
+            let tee = Vec2::new(0.0, helpers::tee_line_far());
+            let stone_positions: Vec<(Team, Vec2)> = stones
+                .into_iter()
+                .map(|(is_team1, dx, dy)| {
+                    let team = if is_team1 { Team::One } else { Team::Two };
+                    (team, tee + Vec2::new(dx, dy))
+                })
+                .collect();
+
+            let (team1, team2) = helpers::score_end(&stone_positions);
+
+            prop_assert!(team1 <= 8, "Team 1 scored more than 8: {}", team1);
+            prop_assert!(team2 <= 8, "Team 2 scored more than 8: {}", team2);
+        }
+    }
+
+    /// Property: Closer stone always wins (transitive scoring)
+    proptest! {
+        #[test]
+        fn closer_stone_wins(
+            team1_dist in 0.01f32..1.5,
+            team2_dist in 0.01f32..1.5,
+        ) {
+            let tee = Vec2::new(0.0, helpers::tee_line_far());
+            let stones = vec![
+                (Team::One, tee + Vec2::new(team1_dist, 0.0)),
+                (Team::Two, tee + Vec2::new(team2_dist, 0.0)),
+            ];
+
+            let (team1, team2) = helpers::score_end(&stones);
+
+            if team1_dist < team2_dist {
+                prop_assert_eq!(team1, 1, "Team 1 was closer but didn't score");
+                prop_assert_eq!(team2, 0);
+            } else if team2_dist < team1_dist {
+                prop_assert_eq!(team1, 0);
+                prop_assert_eq!(team2, 1, "Team 2 was closer but didn't score");
+            }
+            // Equal distances: either can win, tested elsewhere
+        }
+    }
+
+    // ============ TEAM ALTERNATION INVARIANTS ============
+
+    /// Property: Teams always alternate for any valid shot index
+    proptest! {
+        #[test]
+        fn team_alternation_consistent(shot_index in 0u8..100) {
+            let team = Team::from_shot_index(shot_index);
+            let expected = if shot_index % 2 == 0 { Team::One } else { Team::Two };
+            prop_assert_eq!(team, expected);
+        }
+    }
+
+    /// Property: Opponent is always the other team
+    proptest! {
+        #[test]
+        fn opponent_is_inverse(shot_index in 0u8..100) {
+            let team = Team::from_shot_index(shot_index);
+            prop_assert_eq!(team.opponent().opponent(), team);
+        }
+    }
+
+    // ============ WEIGHT/SPEED MAPPING INVARIANTS ============
+
+    /// Property: Weight-to-speed mapping is monotonically increasing
+    proptest! {
+        #[test]
+        fn weight_speed_monotonic(
+            w1 in 1.0f32..10.0,
+            w2 in 1.0f32..10.0,
+        ) {
+            let speed1 = WEIGHT_MIN_SPEED + ((w1 - 1.0) / 9.0) * (WEIGHT_MAX_SPEED - WEIGHT_MIN_SPEED);
+            let speed2 = WEIGHT_MIN_SPEED + ((w2 - 1.0) / 9.0) * (WEIGHT_MAX_SPEED - WEIGHT_MIN_SPEED);
+
+            if w1 < w2 {
+                prop_assert!(speed1 < speed2, "weight {} -> speed {}, weight {} -> speed {}", w1, speed1, w2, speed2);
+            } else if w1 > w2 {
+                prop_assert!(speed1 > speed2);
+            } else {
+                prop_assert!((speed1 - speed2).abs() < 0.0001);
+            }
+        }
+    }
+
+    /// Property: Speed is always within valid bounds
+    proptest! {
+        #[test]
+        fn speed_within_bounds(weight in 1.0f32..10.0) {
+            let speed = WEIGHT_MIN_SPEED + ((weight - 1.0) / 9.0) * (WEIGHT_MAX_SPEED - WEIGHT_MIN_SPEED);
+            prop_assert!(speed >= WEIGHT_MIN_SPEED - 0.001);
+            prop_assert!(speed <= WEIGHT_MAX_SPEED + 0.001);
+        }
+    }
+
+    // ============ ANGLE/DIRECTION INVARIANTS ============
+
+    /// Property: Positive angles deflect right (positive X)
+    proptest! {
+        #[test]
+        fn positive_angle_deflects_right(angle_deg in 0.1f32..45.0) {
+            let angle_rad = angle_deg.to_radians();
+            let direction = Vec2::new(angle_rad.sin(), angle_rad.cos());
+            prop_assert!(direction.x > 0.0, "Angle {} should deflect right", angle_deg);
+            prop_assert!(direction.y > 0.0, "Should still move forward");
+        }
+    }
+
+    /// Property: Negative angles deflect left (negative X)
+    proptest! {
+        #[test]
+        fn negative_angle_deflects_left(angle_deg in -45.0f32..-0.1) {
+            let angle_rad = angle_deg.to_radians();
+            let direction = Vec2::new(angle_rad.sin(), angle_rad.cos());
+            prop_assert!(direction.x < 0.0, "Angle {} should deflect left", angle_deg);
+            prop_assert!(direction.y > 0.0, "Should still move forward");
+        }
+    }
+
+    /// Property: Direction vector is always normalized (unit length)
+    proptest! {
+        #[test]
+        fn direction_is_normalized(angle_deg in -45.0f32..45.0) {
+            let angle_rad = angle_deg.to_radians();
+            let direction = Vec2::new(angle_rad.sin(), angle_rad.cos());
+            let length = direction.length();
+            prop_assert!((length - 1.0).abs() < 0.0001, "Direction should be unit vector, got length {}", length);
+        }
+    }
+
+    // ============ FREE GUARD ZONE INVARIANTS ============
+
+    /// Property: FGZ positions are always between hog line and house
+    proptest! {
+        #[test]
+        fn fgz_is_between_hog_and_house(
+            x in -2.0f32..2.0,
+            y_offset in 0.01f32..3.0, // offset past hog line
+        ) {
+            let y = helpers::hog_line_far() + y_offset;
+            let pos = Vec2::new(x, y);
+
+            if helpers::is_in_free_guard_zone(pos) {
+                // Must be past hog line
+                prop_assert!(pos.y > helpers::hog_line_far());
+                // Must NOT be in the house
+                let tee = Vec2::new(0.0, helpers::tee_line_far());
+                let dist_to_tee = pos.distance(tee);
+                prop_assert!(dist_to_tee > HOUSE_RADIUS_12, "FGZ stone should not be in house");
+            }
+        }
+    }
+
+    /// Property: Stones in the house are never in FGZ
+    proptest! {
+        #[test]
+        fn house_stones_not_in_fgz(
+            angle in 0.0f32..std::f32::consts::TAU,
+            dist in 0.0f32..1.8, // within 12-foot
+        ) {
+            let tee = Vec2::new(0.0, helpers::tee_line_far());
+            let pos = tee + Vec2::new(angle.cos() * dist, angle.sin() * dist);
+
+            let tee_dist = pos.distance(tee);
+            if tee_dist <= HOUSE_RADIUS_12 {
+                prop_assert!(
+                    !helpers::is_in_free_guard_zone(pos),
+                    "Stone in house at distance {} should not be in FGZ",
+                    tee_dist
+                );
+            }
+        }
+    }
+
+    // ============ OUT OF BOUNDS INVARIANTS ============
+
+    /// Property: Stones within sheet boundaries are never out of bounds
+    proptest! {
+        #[test]
+        fn in_bounds_stones_valid(
+            x in -(SHEET_WIDTH * 0.5 - STONE_RADIUS - 0.1)..=(SHEET_WIDTH * 0.5 - STONE_RADIUS - 0.1),
+        ) {
+            // Use a y that's definitely in bounds
+            let y = 0.0f32;
+            let pos = Vec2::new(x, y);
+            prop_assert!(
+                !helpers::is_out_of_bounds(pos),
+                "Position {:?} should be in bounds",
+                pos
+            );
+        }
+    }
+
+    /// Property: Stones clearly outside sheet are always out of bounds
+    proptest! {
+        #[test]
+        fn out_of_bounds_symmetry(
+            x_excess in 0.5f32..5.0,
+        ) {
+            let left = Vec2::new(-(SHEET_WIDTH * 0.5 + STONE_RADIUS + x_excess), 0.0);
+            let right = Vec2::new(SHEET_WIDTH * 0.5 + STONE_RADIUS + x_excess, 0.0);
+
+            prop_assert!(helpers::is_out_of_bounds(left), "Left edge should be OOB");
+            prop_assert!(helpers::is_out_of_bounds(right), "Right edge should be OOB");
+        }
+    }
+
+    // ============ GAME STATE INVARIANTS ============
+
+    /// Property: GameState current_team always matches Team::from_shot_index
+    proptest! {
+        #[test]
+        fn current_team_matches_shot_index(shot_index in 0u8..16) {
+            let mut state = resources::GameState::default();
+            state.shot_index = shot_index;
+            prop_assert_eq!(
+                state.current_team(),
+                Team::from_shot_index(shot_index)
+            );
+        }
+    }
+
+    /// Property: Weight from broom is always clamped to valid range
+    proptest! {
+        #[test]
+        fn weight_from_broom_clamped(
+            broom_y in -100.0f32..100.0,
+        ) {
+            let mut state = resources::GameState::default();
+            state.broom_position = Vec2::new(0.0, broom_y);
+            let weight = state.weight_from_broom();
+
+            prop_assert!(weight >= WEIGHT_MIN, "Weight {} below min {}", weight, WEIGHT_MIN);
+            prop_assert!(weight <= WEIGHT_MAX, "Weight {} above max {}", weight, WEIGHT_MAX);
+        }
+    }
+
+    /// Property: Angle from broom is always within limits
+    proptest! {
+        #[test]
+        fn angle_from_broom_within_limits(
+            broom_x in -5.0f32..5.0,
+        ) {
+            let mut state = resources::GameState::default();
+            state.broom_position = Vec2::new(broom_x, helpers::tee_line_far());
+            let angle = state.angle_from_broom();
+
+            prop_assert!(
+                angle.abs() <= ANGLE_LIMIT_DEG + 0.1,
+                "Angle {} exceeds limit {}",
+                angle,
+                ANGLE_LIMIT_DEG
+            );
+        }
+    }
 }
