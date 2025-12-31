@@ -415,6 +415,12 @@ pub struct HammerText;
 #[derive(Component)]
 pub struct StoneVisual;
 
+/// Marker for reflection visuals (below ice).
+///
+/// Used to disable shadow casting on reflection meshes.
+#[derive(Component)]
+pub struct ReflectionVisual;
+
 /// Marker component for the ghost stone prediction visual.
 ///
 /// The ghost stone shows where the current shot is predicted to land

@@ -252,9 +252,8 @@ pub const AI_WEIGHT_SEARCH_STEPS: [f32; 13] = [
 /// X-offset values for AI broom search grid in meters.
 ///
 /// AI searches these offsets to compensate for curl.
-pub const AI_X_OFFSET_RANGE: [f32; 11] = [
-    -2.0, -1.5, -1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0, 1.5, 2.0,
-];
+pub const AI_X_OFFSET_RANGE: [f32; 11] =
+    [-2.0, -1.5, -1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0, 1.5, 2.0];
 
 // ============================================================================
 // UI COLORS (as SRGBA values)

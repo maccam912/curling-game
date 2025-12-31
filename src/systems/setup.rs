@@ -3,6 +3,7 @@
 //! Systems that run during startup to initialize the game world.
 
 use bevy::gltf::GltfAssetLabel;
+use bevy::light::NotShadowCaster;
 use bevy::math::primitives::{Cuboid, Cylinder};
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
@@ -129,6 +130,7 @@ pub fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    mut images: ResMut<Assets<Image>>,
     asset_server: Res<AssetServer>,
 ) {
     info!("Setting up game scene");
@@ -143,31 +145,142 @@ pub fn setup_scene(
     ));
     debug!(position = ?skip_view_pos, "Spawned main camera");
 
-    // Main light (above ice)
+    // Main directional light (overhead, for primary shadows)
+    // Positioned centrally above the house for even shadow casting
     commands.spawn((
         DirectionalLight {
-            illuminance: 8000.0,
+            illuminance: 6000.0,
+            shadows_enabled: true,
             ..default()
         },
-        Transform::from_xyz(0.0, -12.0, 60.0).looking_at(Vec3::new(0.0, 12.0, 0.0), Vec3::Z),
+        Transform::from_xyz(0.0, TEE_FROM_CENTER, 30.0)
+            .looking_at(Vec3::new(0.0, TEE_FROM_CENTER, 0.0), Vec3::Y),
     ));
 
+    // Linear arrays of lights along both sides of the sheet
+    // Simulates the rows of fluorescent fixtures in a curling club
+    let side_light_height = 8.0;
+    let side_light_x = 5.0; // Just outside the sheet width
+    let light_spacing = 7.0; // Spacing between fixtures
+    let num_lights = 8; // Lights per side
+    let start_y = -SHEET_LENGTH * 0.4; // Start near delivery end
+
+    for side in [-1.0, 1.0] {
+        for i in 0..num_lights {
+            let y_pos = start_y + (i as f32) * light_spacing;
+            let pos = Vec3::new(side * side_light_x, y_pos, side_light_height);
+            commands.spawn((
+                PointLight {
+                    intensity: 600_000.0, // Lumens - fluorescent fixture brightness
+                    range: 25.0,
+                    shadows_enabled: false,
+                    ..default()
+                },
+                Transform::from_translation(pos),
+            ));
+        }
+        debug!(
+            side = if side > 0.0 { "right" } else { "left" },
+            count = num_lights,
+            "Spawned side light array"
+        );
+    }
+
+    // Four corner point lights for additional fill around the house
+    let corner_light_height = 10.0;
+    let corner_spread_x = 6.0;
+    let corner_spread_y = 10.0;
+    let house_y = TEE_FROM_CENTER;
+
+    let corner_lights = [
+        (1.0, corner_spread_y),   // NE - skip side, right
+        (1.0, -corner_spread_y),  // SE - delivery side, right
+        (-1.0, corner_spread_y),  // NW - skip side, left
+        (-1.0, -corner_spread_y), // SW - delivery side, left
+    ];
+
+    for (x_sign, y_offset) in corner_lights {
+        let pos = Vec3::new(
+            x_sign * corner_spread_x,
+            house_y + y_offset,
+            corner_light_height,
+        );
+        commands.spawn((
+            PointLight {
+                intensity: 500_000.0,
+                range: 30.0,
+                shadows_enabled: false,
+                ..default()
+            },
+            Transform::from_translation(pos),
+        ));
+    }
+    debug!("Spawned 4 corner fill lights around house");
+
     // Mirrored light (below ice for reflections, no shadows)
+    // Shines upward to match the flipped normals from the negative Y scale
     commands.spawn((
         DirectionalLight {
-            illuminance: 8000.0,
+            illuminance: 5000.0,
             shadows_enabled: false,
             ..default()
         },
-        Transform::from_xyz(0.0, -12.0, -60.0).looking_at(Vec3::new(0.0, 12.0, 0.0), Vec3::NEG_Z),
+        Transform::from_xyz(0.0, TEE_FROM_CENTER, -30.0)
+            .looking_at(Vec3::new(0.0, TEE_FROM_CENTER, 0.0), Vec3::Y),
     ));
 
-    // Ice Sheet
+    // Ambient light for base illumination
+    commands.spawn(AmbientLight {
+        color: Color::WHITE,
+        brightness: 400.0,
+        ..default()
+    });
+
+    // Ice Sheet with pebbling texture
     let sheet_mesh = meshes.add(Cuboid::new(SHEET_WIDTH, SHEET_LENGTH, SHEET_THICKNESS));
+
+    // Generate noise normal map for pebbling effect
+    // Creates small bumps that catch the light like frozen water droplets
+    let pebble_size = 256u32;
+    let mut pebble_data = Vec::with_capacity((pebble_size * pebble_size * 4) as usize);
+    let mut rng = rand::rng();
+    for _ in 0..(pebble_size * pebble_size) {
+        // Normal map uses RGB where (128,128,255) = flat surface pointing up
+        // Increase variation for visible pebbling effect
+        let variation = 0.4; // Noticeable pebbling
+        let nx = (128.0 + (rng.random::<f32>() - 0.5) * 255.0 * variation).clamp(0.0, 255.0);
+        let ny = (128.0 + (rng.random::<f32>() - 0.5) * 255.0 * variation).clamp(0.0, 255.0);
+        let nz = 200.0; // Slightly less than 255 to allow for angled normals
+        pebble_data.push(nx as u8);
+        pebble_data.push(ny as u8);
+        pebble_data.push(nz as u8);
+        pebble_data.push(255); // Alpha
+    }
+
+    let pebble_image = Image::new(
+        bevy::render::render_resource::Extent3d {
+            width: pebble_size,
+            height: pebble_size,
+            depth_or_array_layers: 1,
+        },
+        bevy::render::render_resource::TextureDimension::D2,
+        pebble_data,
+        bevy::render::render_resource::TextureFormat::Rgba8Unorm,
+        bevy::asset::RenderAssetUsages::RENDER_WORLD,
+    );
+    let pebble_texture = images.add(pebble_image);
+
     let sheet_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.95, 0.96, 0.98, 0.1),
-        perceptual_roughness: 0.2,
+        base_color: Color::srgba(0.92, 0.94, 0.98, 0.25), // More transparent
+        perceptual_roughness: 0.1, // Slightly rougher to show pebbling better
+        metallic: 0.0,
+        reflectance: 0.7, // High reflectance for ice-like specularity
+        ior: 1.31,        // Index of refraction for ice
         alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        normal_map_texture: Some(pebble_texture.clone()),
+        flip_normal_map_y: true, // Bevy uses OpenGL convention
+        // Tile the texture - reduced tiling so pebbles are more visible
+        uv_transform: bevy::math::Affine2::from_scale(Vec2::new(8.0, 40.0)),
         ..default()
     });
     commands.spawn((
@@ -181,27 +294,27 @@ pub fn setup_scene(
         "Created ice sheet"
     );
 
-    // Line Materials
+    // Line Materials (lit so they receive shadows)
     let line_black = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.0, 0.0, 0.0, 0.1),
-        unlit: true,
-        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        base_color: Color::srgb(0.0, 0.0, 0.0),
         ..default()
     });
     let line_red = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.8, 0.1, 0.1, 0.1),
-        unlit: true,
-        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        base_color: Color::srgb(0.8, 0.1, 0.1),
         ..default()
     });
     let line_blue = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.1, 0.1, 0.8, 0.1),
-        unlit: true,
-        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        base_color: Color::srgb(0.1, 0.1, 0.8),
         ..default()
     });
 
-    // Center Line (Back to Back)
+    // Z-depths for lines (negative = below ice surface)
+    // Center line is shallowest - it runs through the house and should be visible
+    const CENTER_LINE_Z: f32 = -0.001;
+    const TEE_LINE_Z: f32 = -0.002;
+    const OTHER_LINE_Z: f32 = -0.003;
+
+    // Center Line (Back to Back) - shallowest so it's visible through house
     spawn_line(
         &mut commands,
         &mut meshes,
@@ -210,6 +323,7 @@ pub fn setup_scene(
         back_line_far() * 2.0,
         true,
         0.02,
+        CENTER_LINE_Z,
     );
 
     // Hacks
@@ -225,10 +339,11 @@ pub fn setup_scene(
             0.5,
             false,
             0.05,
+            OTHER_LINE_Z,
         );
     }
 
-    // Transverse Lines (back lines and tee lines)
+    // Transverse Lines (back lines)
     for &y in &[back_line_far(), back_line_near()] {
         spawn_line(
             &mut commands,
@@ -238,8 +353,10 @@ pub fn setup_scene(
             SHEET_WIDTH,
             false,
             0.02,
+            OTHER_LINE_Z,
         );
     }
+    // Tee lines - slightly above house rings so they're visible
     for &y in &[tee_line_far(), tee_line_near()] {
         spawn_line(
             &mut commands,
@@ -249,8 +366,10 @@ pub fn setup_scene(
             SHEET_WIDTH,
             false,
             0.02,
+            TEE_LINE_Z,
         );
     }
+    // Hog lines
     for &y in &[hog_line_far(), hog_line_near()] {
         spawn_line(
             &mut commands,
@@ -260,30 +379,27 @@ pub fn setup_scene(
             SHEET_WIDTH,
             false,
             0.1,
+            OTHER_LINE_Z,
         );
     }
 
-    // House Materials
+    // House Materials (lit so they receive shadows)
     let ring_blue = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.1, 0.2, 0.8, 0.1),
-        unlit: true,
-        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        base_color: Color::srgb(0.1, 0.2, 0.8),
         ..default()
     });
     let ring_white = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.95, 0.95, 0.95, 0.1),
-        unlit: true,
-        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        base_color: Color::srgb(0.95, 0.95, 0.95),
         ..default()
     });
     let ring_red = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.8, 0.1, 0.1, 0.1),
-        unlit: true,
-        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
+        base_color: Color::srgb(0.8, 0.1, 0.1),
         ..default()
     });
 
     // Draw Houses (Near and Far)
+    // Z positions are negative to place rings below the ice surface
+    // Larger rings are deeper so smaller rings paint over them
     for &y in &[tee_line_far(), tee_line_near()] {
         spawn_house_ring(
             &mut commands,
@@ -291,7 +407,7 @@ pub fn setup_scene(
             ring_blue.clone(),
             HOUSE_RADIUS_12,
             y,
-            0.003,
+            -0.006, // Largest ring, deepest
         );
         spawn_house_ring(
             &mut commands,
@@ -299,7 +415,7 @@ pub fn setup_scene(
             ring_white.clone(),
             HOUSE_RADIUS_8,
             y,
-            0.004,
+            -0.005,
         );
         spawn_house_ring(
             &mut commands,
@@ -307,7 +423,7 @@ pub fn setup_scene(
             ring_red.clone(),
             HOUSE_RADIUS_4,
             y,
-            0.005,
+            -0.004,
         );
         spawn_house_ring(
             &mut commands,
@@ -315,7 +431,7 @@ pub fn setup_scene(
             ring_white.clone(),
             HOUSE_RADIUS_BUTTON,
             y,
-            0.006,
+            -0.003, // Smallest ring, shallowest
         );
     }
     debug!("Created houses at near and far ends");
@@ -1015,4 +1131,31 @@ pub fn setup_ui(mut commands: Commands) {
         });
 
     debug!("UI setup complete");
+}
+
+/// Disables shadow casting on reflection stone meshes.
+///
+/// This system runs after scene loading to find all mesh children of
+/// `ReflectionVisual` entities and adds `NotShadowCaster` to them.
+/// This prevents the under-ice reflection from casting shadows upward.
+pub fn disable_reflection_shadows(
+    mut commands: Commands,
+    reflections: Query<Entity, With<ReflectionVisual>>,
+    children_query: Query<&Children>,
+    meshes: Query<Entity, (With<Mesh3d>, Without<NotShadowCaster>)>,
+) {
+    for reflection_entity in reflections.iter() {
+        // Recursively find all mesh descendants
+        let mut to_visit = vec![reflection_entity];
+        while let Some(entity) = to_visit.pop() {
+            // Check if this entity is a mesh without NotShadowCaster
+            if meshes.get(entity).is_ok() {
+                commands.entity(entity).insert(NotShadowCaster);
+            }
+            // Add children to visit
+            if let Ok(children) = children_query.get(entity) {
+                to_visit.extend(children.iter());
+            }
+        }
+    }
 }

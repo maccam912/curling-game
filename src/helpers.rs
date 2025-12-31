@@ -9,7 +9,7 @@ use bevy::math::primitives::{Cuboid, Cylinder};
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
-use crate::components::{CurlDirection, Stone, Team, ThrowingStone};
+use crate::components::{CurlDirection, ReflectionVisual, Stone, Team, ThrowingStone};
 use crate::constants::*;
 use crate::resources::{ShotSnapshot, StoneAssets, StoneSnapshot};
 
@@ -210,7 +210,12 @@ pub fn spawn_stone(
             ))
             .with_children(|visual| {
                 // Reflected GLB model (child of visual so it rotates together)
-                visual.spawn((SceneRoot(reflection_scene), reflection_transform));
+                // ReflectionVisual marker used to disable shadow casting
+                visual.spawn((
+                    ReflectionVisual,
+                    SceneRoot(reflection_scene),
+                    reflection_transform,
+                ));
             });
 
         // Debug cylinder showing physics collider bounds
@@ -259,6 +264,7 @@ pub fn spawn_restored_guard(
 /// * `length` - Length of the line
 /// * `along_y` - If true, line extends along Y axis; otherwise X axis
 /// * `thickness` - Width/thickness of the line
+/// * `z_pos` - Z position (depth below ice surface, should be negative)
 pub fn spawn_line(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
@@ -267,6 +273,7 @@ pub fn spawn_line(
     length: f32,
     along_y: bool,
     thickness: f32,
+    z_pos: f32,
 ) {
     let (width, height) = if along_y {
         (thickness, length)
@@ -277,7 +284,7 @@ pub fn spawn_line(
     commands.spawn((
         Mesh3d(mesh),
         MeshMaterial3d(material),
-        Transform::from_translation(Vec3::new(center.x, center.y, 0.002)),
+        Transform::from_translation(Vec3::new(center.x, center.y, z_pos)),
     ));
 }
 

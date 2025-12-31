@@ -3,7 +3,10 @@
     "allow": [
       "Bash(wc:*)",
       "Bash(find:*)",
-      "Bash(cargo test:*)"
+      "Bash(cargo test:*)",
+      "Bash(cargo check:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

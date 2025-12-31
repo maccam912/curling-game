@@ -200,6 +200,12 @@ impl Plugin for CurlingPlugin {
                     systems::handle_score_confirmation,
                     systems::camera_control_system,
                     systems::update_ui,
+                )
+                    .run_if(in_state(app_state::AppState::PassAndPlay)),
+            )
+            .add_systems(
+                Update,
+                (
                     systems::update_score_summary_panel,
                     systems::update_game_over_panel,
                     systems::apply_responsive_ui,
@@ -208,6 +214,7 @@ impl Plugin for CurlingPlugin {
                     systems::update_thrower_info,
                     systems::update_hammer_icons,
                     systems::update_curl_buttons_visibility,
+                    systems::disable_reflection_shadows,
                 )
                     .run_if(in_state(app_state::AppState::PassAndPlay)),
             )
@@ -265,11 +272,18 @@ impl Plugin for CurlingPlugin {
                     systems::update_game_over_panel,
                     systems::apply_responsive_ui,
                     systems::ai_turn_system,
+                )
+                    .run_if(in_state(app_state::AppState::VsAI)),
+            )
+            .add_systems(
+                Update,
+                (
                     systems::update_prediction,
                     systems::update_ghost_stone_visual,
                     systems::update_thrower_info,
                     systems::update_hammer_icons,
                     systems::update_curl_buttons_visibility,
+                    systems::disable_reflection_shadows,
                 )
                     .run_if(in_state(app_state::AppState::VsAI)),
             )
@@ -349,11 +363,18 @@ impl Plugin for CurlingPlugin {
                     systems::update_score_summary_panel,
                     systems::update_game_over_panel,
                     systems::apply_responsive_ui,
+                )
+                    .run_if(in_state(app_state::AppState::OnlineGame)),
+            )
+            .add_systems(
+                Update,
+                (
                     systems::update_prediction,
                     systems::update_ghost_stone_visual,
                     systems::update_thrower_info,
                     systems::update_hammer_icons,
                     systems::update_curl_buttons_visibility,
+                    systems::disable_reflection_shadows,
                 )
                     .run_if(in_state(app_state::AppState::OnlineGame)),
             )
@@ -1366,7 +1387,7 @@ mod proptests {
 
     // ============ SCORING INVARIANTS ============
 
-    /// Property: Only one team can score per end (never both)
+    // Property: Only one team can score per end (never both)
     proptest! {
         #[test]
         fn scoring_only_one_team_scores(
@@ -1396,7 +1417,7 @@ mod proptests {
         }
     }
 
-    /// Property: Score is bounded by 8 (max stones per team)
+    // Property: Score is bounded by 8 (max stones per team)
     proptest! {
         #[test]
         fn scoring_bounded_by_eight(
@@ -1426,7 +1447,7 @@ mod proptests {
         }
     }
 
-    /// Property: Closer stone always wins (transitive scoring)
+    // Property: Closer stone always wins (transitive scoring)
     proptest! {
         #[test]
         fn closer_stone_wins(
@@ -1454,7 +1475,7 @@ mod proptests {
 
     // ============ TEAM ALTERNATION INVARIANTS ============
 
-    /// Property: Teams always alternate for any valid shot index
+    // Property: Teams always alternate for any valid shot index
     proptest! {
         #[test]
         fn team_alternation_consistent(shot_index in 0u8..100) {
@@ -1464,7 +1485,7 @@ mod proptests {
         }
     }
 
-    /// Property: Opponent is always the other team
+    // Property: Opponent is always the other team
     proptest! {
         #[test]
         fn opponent_is_inverse(shot_index in 0u8..100) {
@@ -1475,7 +1496,7 @@ mod proptests {
 
     // ============ WEIGHT/SPEED MAPPING INVARIANTS ============
 
-    /// Property: Weight-to-speed mapping is monotonically increasing
+    // Property: Weight-to-speed mapping is monotonically increasing
     proptest! {
         #[test]
         fn weight_speed_monotonic(
@@ -1495,7 +1516,7 @@ mod proptests {
         }
     }
 
-    /// Property: Speed is always within valid bounds
+    // Property: Speed is always within valid bounds
     proptest! {
         #[test]
         fn speed_within_bounds(weight in 1.0f32..10.0) {
@@ -1507,7 +1528,7 @@ mod proptests {
 
     // ============ ANGLE/DIRECTION INVARIANTS ============
 
-    /// Property: Positive angles deflect right (positive X)
+    // Property: Positive angles deflect right (positive X)
     proptest! {
         #[test]
         fn positive_angle_deflects_right(angle_deg in 0.1f32..45.0) {
@@ -1518,7 +1539,7 @@ mod proptests {
         }
     }
 
-    /// Property: Negative angles deflect left (negative X)
+    // Property: Negative angles deflect left (negative X)
     proptest! {
         #[test]
         fn negative_angle_deflects_left(angle_deg in -45.0f32..-0.1) {
@@ -1529,7 +1550,7 @@ mod proptests {
         }
     }
 
-    /// Property: Direction vector is always normalized (unit length)
+    // Property: Direction vector is always normalized (unit length)
     proptest! {
         #[test]
         fn direction_is_normalized(angle_deg in -45.0f32..45.0) {
@@ -1542,7 +1563,7 @@ mod proptests {
 
     // ============ FREE GUARD ZONE INVARIANTS ============
 
-    /// Property: FGZ positions are always between hog line and house
+    // Property: FGZ positions are always between hog line and house
     proptest! {
         #[test]
         fn fgz_is_between_hog_and_house(
@@ -1563,7 +1584,7 @@ mod proptests {
         }
     }
 
-    /// Property: Stones in the house are never in FGZ
+    // Property: Stones in the house are never in FGZ
     proptest! {
         #[test]
         fn house_stones_not_in_fgz(
@@ -1586,7 +1607,7 @@ mod proptests {
 
     // ============ OUT OF BOUNDS INVARIANTS ============
 
-    /// Property: Stones within sheet boundaries are never out of bounds
+    // Property: Stones within sheet boundaries are never out of bounds
     proptest! {
         #[test]
         fn in_bounds_stones_valid(
@@ -1603,7 +1624,7 @@ mod proptests {
         }
     }
 
-    /// Property: Stones clearly outside sheet are always out of bounds
+    // Property: Stones clearly outside sheet are always out of bounds
     proptest! {
         #[test]
         fn out_of_bounds_symmetry(
@@ -1619,7 +1640,7 @@ mod proptests {
 
     // ============ GAME STATE INVARIANTS ============
 
-    /// Property: GameState current_team always matches Team::from_shot_index
+    // Property: GameState current_team always matches Team::from_shot_index
     proptest! {
         #[test]
         fn current_team_matches_shot_index(shot_index in 0u8..16) {
@@ -1632,7 +1653,7 @@ mod proptests {
         }
     }
 
-    /// Property: Weight from broom is always clamped to valid range
+    // Property: Weight from broom is always clamped to valid range
     proptest! {
         #[test]
         fn weight_from_broom_clamped(
@@ -1647,7 +1668,7 @@ mod proptests {
         }
     }
 
-    /// Property: Angle from broom is always within limits
+    // Property: Angle from broom is always within limits
     proptest! {
         #[test]
         fn angle_from_broom_within_limits(

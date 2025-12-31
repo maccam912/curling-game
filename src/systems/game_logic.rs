@@ -154,9 +154,7 @@ fn apply_fgz_rules(
 /// Calculates end scoring and identifies scoring stone entities.
 ///
 /// Returns (team1_points, team2_points, scoring_entities).
-fn calculate_end_score(
-    stones: &Query<(Entity, &Transform, &Stone)>,
-) -> (u32, u32, Vec<Entity>) {
+fn calculate_end_score(stones: &Query<(Entity, &Transform, &Stone)>) -> (u32, u32, Vec<Entity>) {
     let tee = Vec2::new(0.0, tee_line_far());
 
     // Collect all stone positions for scoring
