@@ -55,42 +55,43 @@ fn calculate_broom_for_target(
     curl: CurlDirection,
     existing_stones: &[Vec2],
 ) -> Vec2 {
-    // Start with broom at target and refine using prediction
     let start_pos = Vec2::new(0.0, DELIVERY_START_Y);
+    let angular_velocity = curl.angular_velocity();
 
-    // The broom Y position determines weight
-    // The broom X position (combined with Y) determines angle
+    // Broom Y position maps to weight:
+    // - min_y (hog line) = WEIGHT_MIN
+    // - max_y (back line) = WEIGHT_MAX
+    let min_y = hog_line_far();
+    let max_y = back_line_far();
 
-    // We'll iterate to find the broom position that gets closest to target
     let mut best_broom = target_pos;
     let mut best_distance = f32::MAX;
 
-    // Use a grid search around the target to find optimal broom position
-    // The curl will deflect the stone, so we need to compensate
-    let angular_velocity = curl.angular_velocity();
+    // Search over the full weight range (not just small offsets around target)
+    // This ensures we find the correct weight to reach the target distance
+    let weight_steps = [
+        1.0f32, 2.0, 3.0, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 8.0, 9.0, 10.0,
+    ];
 
-    // Due to curl, if we're curling left (positive angular), the stone will
-    // end up left of where a straight shot would go, so we need to aim
-    // right of the target to compensate
+    // Search X offsets in the opposite direction of curl to compensate
+    let x_offsets = [
+        -2.0f32, -1.5, -1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0, 1.5, 2.0,
+    ];
 
-    // Search in the opposite direction of curl
-    for x_offset in [-1.5f32, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5] {
-        for y_offset in [-0.5f32, -0.25, 0.0, 0.25, 0.5] {
-            let test_broom = Vec2::new(
-                target_pos.x + x_offset * (if angular_velocity > 0.0 { 1.0 } else { -1.0 }),
-                target_pos.y + y_offset,
-            );
+    for &weight in &weight_steps {
+        // Convert weight to broom Y position
+        let normalized = (weight - WEIGHT_MIN) / (WEIGHT_MAX - WEIGHT_MIN);
+        let broom_y = min_y + normalized * (max_y - min_y);
+
+        for &x_offset in &x_offsets {
+            // Apply X offset in the opposite direction of curl to compensate
+            let broom_x =
+                target_pos.x + x_offset * (if angular_velocity > 0.0 { 1.0 } else { -1.0 });
+            let test_broom = Vec2::new(broom_x, broom_y);
 
             // Calculate throw parameters from this broom position
             let direction = test_broom - start_pos;
             let angle_rad = direction.x.atan2(direction.y);
-
-            // Calculate weight from broom Y position
-            let min_y = hog_line_far();
-            let max_y = back_line_far();
-            let range = max_y - min_y;
-            let normalized = ((test_broom.y - min_y) / range).clamp(0.0, 1.0);
-            let weight = WEIGHT_MIN + normalized * (WEIGHT_MAX - WEIGHT_MIN);
 
             // Convert weight to speed
             let speed = WEIGHT_MIN_SPEED
