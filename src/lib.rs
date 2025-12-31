@@ -202,6 +202,8 @@ impl Plugin for CurlingPlugin {
                     systems::update_prediction,
                     systems::update_ghost_stone_visual,
                     systems::update_thrower_info,
+                    systems::update_hammer_icons,
+                    systems::update_curl_buttons_visibility,
                 )
                     .run_if(in_state(app_state::AppState::PassAndPlay)),
             )
@@ -262,6 +264,8 @@ impl Plugin for CurlingPlugin {
                     systems::update_prediction,
                     systems::update_ghost_stone_visual,
                     systems::update_thrower_info,
+                    systems::update_hammer_icons,
+                    systems::update_curl_buttons_visibility,
                 )
                     .run_if(in_state(app_state::AppState::VsAI)),
             )
@@ -344,6 +348,8 @@ impl Plugin for CurlingPlugin {
                     systems::update_prediction,
                     systems::update_ghost_stone_visual,
                     systems::update_thrower_info,
+                    systems::update_hammer_icons,
+                    systems::update_curl_buttons_visibility,
                 )
                     .run_if(in_state(app_state::AppState::OnlineGame)),
             )

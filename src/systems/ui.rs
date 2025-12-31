@@ -702,3 +702,50 @@ pub fn apply_responsive_ui(
         "Applied responsive UI styling"
     );
 }
+
+/// Updates hammer icon visibility based on which team has hammer.
+///
+/// Shows the hammer icon next to the team that has hammer (throws last).
+pub fn update_hammer_icons(
+    state: Res<GameState>,
+    mut team1_hammer: Query<&mut Visibility, (With<Team1HammerIcon>, Without<Team2HammerIcon>)>,
+    mut team2_hammer: Query<&mut Visibility, (With<Team2HammerIcon>, Without<Team1HammerIcon>)>,
+) {
+    // Hammer team is the one that throws second (opponent of first throw team)
+    let hammer_team = state.first_throw_team.opponent();
+
+    // Update Team 1 hammer icon visibility
+    for mut visibility in team1_hammer.iter_mut() {
+        *visibility = if hammer_team == Team::One {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+
+    // Update Team 2 hammer icon visibility
+    for mut visibility in team2_hammer.iter_mut() {
+        *visibility = if hammer_team == Team::Two {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
+    }
+}
+
+/// Updates curl buttons row visibility based on game phase.
+///
+/// Hides the IN/OUT buttons during Aiming phase (after confirming shot, before throwing).
+/// Shows them during CallingShot phase for selection.
+pub fn update_curl_buttons_visibility(
+    state: Res<GameState>,
+    mut curl_row_query: Query<&mut Visibility, With<CurlButtonsRow>>,
+) {
+    for mut visibility in curl_row_query.iter_mut() {
+        *visibility = match state.phase {
+            Phase::CallingShot => Visibility::Visible,
+            Phase::Aiming => Visibility::Hidden,
+            _ => Visibility::Hidden, // Hide during stone moving, resolve, etc.
+        };
+    }
+}

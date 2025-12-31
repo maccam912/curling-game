@@ -376,6 +376,19 @@ pub struct CameraToggleButton;
 #[derive(Component)]
 pub struct CurlButton(pub CurlDirection);
 
+/// Marker for the curl buttons row container (IN/OUT buttons).
+/// Used to control visibility during different phases.
+#[derive(Component)]
+pub struct CurlButtonsRow;
+
+/// Marker for Team 1's hammer icon (shown when Team 1 has hammer).
+#[derive(Component)]
+pub struct Team1HammerIcon;
+
+/// Marker for Team 2's hammer icon (shown when Team 2 has hammer).
+#[derive(Component)]
+pub struct Team2HammerIcon;
+
 /// Marker for the status text display.
 #[derive(Component)]
 pub struct StatusText;

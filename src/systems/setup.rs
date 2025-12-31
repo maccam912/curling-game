@@ -388,227 +388,224 @@ pub fn setup_ui(mut commands: Commands) {
             },
         ))
         .with_children(|parent| {
-            // Top HUD bar with multiple info panels
+            // Top HUD bar - Two rows, centered with flexbox wrapping
             parent
                 .spawn((
                     HudPanel,
                     Node {
                         width: Val::Percent(100.0),
-                        flex_direction: FlexDirection::Row,
-                        flex_wrap: FlexWrap::Wrap,
-                        justify_content: JustifyContent::SpaceBetween,
-                        align_items: AlignItems::FlexStart,
-                        row_gap: Val::Px(8.0),
-                        column_gap: Val::Px(10.0),
+                        flex_direction: FlexDirection::Column,
+                        align_items: AlignItems::Center,
+                        row_gap: Val::Px(6.0),
                         ..default()
                     },
                 ))
                 .with_children(|hud| {
-                    // Left side: Score Panel and End Info - wraps on narrow screens
-                    hud.spawn(Node {
-                        flex_direction: FlexDirection::Row,
-                        flex_wrap: FlexWrap::Wrap,
-                        column_gap: Val::Px(10.0),
-                        row_gap: Val::Px(8.0),
-                        ..default()
-                    })
-                    .with_children(|left| {
-                        // Score Panel
-                        left.spawn((
+                    // ===== ROW 1: Scores + End Info (centered, wrapping) =====
+                    hud.spawn((
+                        Node {
+                            flex_direction: FlexDirection::Row,
+                            flex_wrap: FlexWrap::Wrap,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            column_gap: Val::Px(8.0),
+                            row_gap: Val::Px(6.0),
+                            ..default()
+                        },
+                        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
+                        BorderRadius::all(Val::Px(8.0)),
+                    ))
+                    .with_children(|row1| {
+                        // Score Panel (Team 1 score + hammer icon | Team 2 score + hammer icon)
+                        row1.spawn((
                             ScorePanel,
                             CompactOnMobile,
                             Node {
                                 flex_direction: FlexDirection::Row,
-                                column_gap: Val::Px(20.0),
-                                padding: UiRect::axes(Val::Px(15.0), Val::Px(10.0)),
+                                align_items: AlignItems::Center,
+                                column_gap: Val::Px(10.0),
+                                padding: UiRect::axes(Val::Px(12.0), Val::Px(8.0)),
                                 ..default()
                             },
-                            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
-                            BorderRadius::all(Val::Px(8.0)),
                         ))
                         .with_children(|scores| {
-                            // Team 1 Score
+                            // Team 1: color dot + score + hammer icon
                             scores
                                 .spawn(Node {
                                     flex_direction: FlexDirection::Row,
                                     align_items: AlignItems::Center,
-                                    column_gap: Val::Px(8.0),
+                                    column_gap: Val::Px(4.0),
                                     ..default()
                                 })
                                 .with_children(|team1| {
                                     // Team color indicator
                                     team1.spawn((
                                         Node {
-                                            width: Val::Px(12.0),
-                                            height: Val::Px(12.0),
+                                            width: Val::Px(14.0),
+                                            height: Val::Px(14.0),
                                             ..default()
                                         },
                                         BackgroundColor(Team::One.color()),
-                                        BorderRadius::all(Val::Px(6.0)),
+                                        BorderRadius::all(Val::Px(7.0)),
                                     ));
-                                    team1.spawn((
-                                        Text::new("Team 1:"),
-                                        TextFont {
-                                            font_size: 18.0,
-                                            ..default()
-                                        },
-                                        TextColor(Color::WHITE),
-                                    ));
+                                    // Score
                                     team1.spawn((
                                         Team1ScoreText,
                                         Text::new("0"),
                                         TextFont {
-                                            font_size: 24.0,
+                                            font_size: 22.0,
                                             ..default()
                                         },
                                         TextColor(Team::One.color()),
+                                    ));
+                                    // Hammer icon (hidden by default, shown via update_ui)
+                                    team1.spawn((
+                                        Team1HammerIcon,
+                                        Text::new("(H)"),
+                                        TextFont {
+                                            font_size: 16.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgb(0.9, 0.8, 0.4)),
+                                        Visibility::Hidden,
                                     ));
                                 });
 
                             // Separator
                             scores.spawn((
-                                Text::new("|"),
+                                Text::new("-"),
                                 TextFont {
-                                    font_size: 24.0,
+                                    font_size: 20.0,
                                     ..default()
                                 },
-                                TextColor(Color::srgba(1.0, 1.0, 1.0, 0.5)),
+                                TextColor(Color::srgba(1.0, 1.0, 1.0, 0.6)),
                             ));
 
-                            // Team 2 Score
+                            // Team 2: color dot + score + hammer icon
                             scores
                                 .spawn(Node {
                                     flex_direction: FlexDirection::Row,
                                     align_items: AlignItems::Center,
-                                    column_gap: Val::Px(8.0),
+                                    column_gap: Val::Px(4.0),
                                     ..default()
                                 })
                                 .with_children(|team2| {
                                     // Team color indicator
                                     team2.spawn((
                                         Node {
-                                            width: Val::Px(12.0),
-                                            height: Val::Px(12.0),
+                                            width: Val::Px(14.0),
+                                            height: Val::Px(14.0),
                                             ..default()
                                         },
                                         BackgroundColor(Team::Two.color()),
-                                        BorderRadius::all(Val::Px(6.0)),
+                                        BorderRadius::all(Val::Px(7.0)),
                                     ));
-                                    team2.spawn((
-                                        Text::new("Team 2:"),
-                                        TextFont {
-                                            font_size: 18.0,
-                                            ..default()
-                                        },
-                                        TextColor(Color::WHITE),
-                                    ));
+                                    // Score
                                     team2.spawn((
                                         Team2ScoreText,
                                         Text::new("0"),
                                         TextFont {
-                                            font_size: 24.0,
+                                            font_size: 22.0,
                                             ..default()
                                         },
                                         TextColor(Team::Two.color()),
                                     ));
+                                    // Hammer icon (hidden by default, shown via update_ui)
+                                    team2.spawn((
+                                        Team2HammerIcon,
+                                        Text::new("(H)"),
+                                        TextFont {
+                                            font_size: 16.0,
+                                            ..default()
+                                        },
+                                        TextColor(Color::srgb(0.9, 0.8, 0.4)),
+                                        Visibility::Hidden,
+                                    ));
                                 });
                         });
 
-                        // End Info Panel
-                        left.spawn((
-                            Node {
-                                padding: UiRect::axes(Val::Px(12.0), Val::Px(10.0)),
+                        // Separator
+                        row1.spawn((
+                            Text::new("|"),
+                            TextFont {
+                                font_size: 18.0,
                                 ..default()
                             },
-                            BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
-                            BorderRadius::all(Val::Px(8.0)),
-                        ))
-                        .with_children(|end_panel| {
-                            end_panel.spawn((
-                                EndInfoText,
-                                Text::new("END 1/8"),
-                                TextFont {
-                                    font_size: 20.0,
-                                    ..default()
-                                },
-                                TextColor(Color::srgb(0.9, 0.9, 0.9)),
-                            ));
-                        });
+                            TextColor(Color::srgba(1.0, 1.0, 1.0, 0.4)),
+                        ));
 
-                        // Hammer Indicator
-                        left.spawn((
-                            HammerIndicator,
-                            Node {
-                                flex_direction: FlexDirection::Row,
-                                align_items: AlignItems::Center,
-                                column_gap: Val::Px(6.0),
-                                padding: UiRect::axes(Val::Px(12.0), Val::Px(10.0)),
+                        // End Info
+                        row1.spawn((
+                            EndInfoText,
+                            Text::new("END 1/8"),
+                            TextFont {
+                                font_size: 18.0,
                                 ..default()
                             },
-                            BackgroundColor(Color::srgba(0.3, 0.2, 0.1, 0.8)),
-                            BorderRadius::all(Val::Px(8.0)),
-                        ))
-                        .with_children(|hammer| {
-                            hammer.spawn((
-                                HammerText,
-                                Text::new("HAMMER"),
-                                TextFont {
-                                    font_size: 14.0,
-                                    ..default()
-                                },
-                                TextColor(Color::srgb(0.9, 0.8, 0.4)),
-                            ));
-                        });
+                            TextColor(Color::srgb(0.9, 0.9, 0.9)),
+                        ));
                     });
 
-                    // Right side: Game info panel
+                    // ===== ROW 2: Metadata (shot, team turn, personality, phase) =====
                     hud.spawn((
                         Node {
-                            flex_direction: FlexDirection::Column,
-                            row_gap: Val::Px(8.0),
-                            padding: UiRect::all(Val::Px(12.0)),
-                            min_width: Val::Px(180.0),
+                            flex_direction: FlexDirection::Row,
+                            flex_wrap: FlexWrap::Wrap,
+                            justify_content: JustifyContent::Center,
+                            align_items: AlignItems::Center,
+                            column_gap: Val::Px(12.0),
+                            row_gap: Val::Px(4.0),
+                            padding: UiRect::axes(Val::Px(12.0), Val::Px(6.0)),
                             ..default()
                         },
-                        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.7)),
-                        BorderRadius::all(Val::Px(8.0)),
+                        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.6)),
+                        BorderRadius::all(Val::Px(6.0)),
                     ))
-                    .with_children(|info| {
+                    .with_children(|row2| {
                         // Shot counter
-                        info.spawn((
+                        row2.spawn((
                             ShotInfoText,
-                            Text::new("Shot: 1/16"),
+                            Text::new("Shot 1/16"),
                             TextFont {
-                                font_size: 16.0,
+                                font_size: 14.0,
                                 ..default()
                             },
                             TextColor(Color::WHITE),
                         ));
 
-                        // Shots remaining
-                        info.spawn((
-                            ShotsRemainingText,
-                            Text::new("Remaining: 16"),
+                        // Separator
+                        row2.spawn((
+                            Text::new("•"),
                             TextFont {
                                 font_size: 14.0,
                                 ..default()
                             },
-                            TextColor(Color::srgba(0.8, 0.8, 0.8, 1.0)),
+                            TextColor(Color::srgba(1.0, 1.0, 1.0, 0.4)),
                         ));
 
                         // Team turn indicator
-                        info.spawn((
+                        row2.spawn((
                             TeamTurnIndicator,
                             Text::new("Team 1's Turn"),
                             TextFont {
-                                font_size: 18.0,
+                                font_size: 14.0,
                                 ..default()
                             },
                             TextColor(Team::One.color()),
                         ));
 
+                        // Separator
+                        row2.spawn((
+                            Text::new("•"),
+                            TextFont {
+                                font_size: 14.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgba(1.0, 1.0, 1.0, 0.4)),
+                        ));
+
                         // Phase indicator
-                        info.spawn((
+                        row2.spawn((
                             PhaseIndicator,
                             Text::new("Calling Shot"),
                             TextFont {
@@ -618,8 +615,8 @@ pub fn setup_ui(mut commands: Commands) {
                             TextColor(Color::srgb(0.6, 0.8, 0.6)),
                         ));
 
-                        // Thrower info (position and skills)
-                        info.spawn((
+                        // Thrower info (position and skills) - hidden when empty
+                        row2.spawn((
                             ThrowerInfoText,
                             Text::new(""),
                             TextFont {
@@ -629,6 +626,42 @@ pub fn setup_ui(mut commands: Commands) {
                             TextColor(Color::srgb(0.8, 0.8, 0.6)),
                         ));
                     });
+
+                    // Hidden legacy elements for compatibility
+                    // HammerIndicator (hidden, used for backward compat queries)
+                    hud.spawn((
+                        HammerIndicator,
+                        Node {
+                            display: Display::None,
+                            ..default()
+                        },
+                    ))
+                    .with_children(|hammer| {
+                        hammer.spawn((
+                            HammerText,
+                            Text::new(""),
+                            TextFont {
+                                font_size: 1.0,
+                                ..default()
+                            },
+                            TextColor(Color::NONE),
+                        ));
+                    });
+
+                    // Hidden ShotsRemainingText for backward compat
+                    hud.spawn((
+                        ShotsRemainingText,
+                        Text::new(""),
+                        TextFont {
+                            font_size: 1.0,
+                            ..default()
+                        },
+                        TextColor(Color::NONE),
+                        Node {
+                            display: Display::None,
+                            ..default()
+                        },
+                    ));
                 });
 
             // Legacy status text (kept for compatibility but can be hidden)
@@ -672,12 +705,15 @@ pub fn setup_ui(mut commands: Commands) {
                         .with_children(|controls| {
                             // Curl buttons row (IN / OUT)
                             controls
-                                .spawn(Node {
-                                    flex_direction: FlexDirection::Row,
-                                    column_gap: Val::Px(10.0),
-                                    justify_content: JustifyContent::Center,
-                                    ..default()
-                                })
+                                .spawn((
+                                    CurlButtonsRow,
+                                    Node {
+                                        flex_direction: FlexDirection::Row,
+                                        column_gap: Val::Px(10.0),
+                                        justify_content: JustifyContent::Center,
+                                        ..default()
+                                    },
+                                ))
                                 .with_children(|curl_row| {
                                     // Curl IN button (selected by default)
                                     curl_row
