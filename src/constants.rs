@@ -209,3 +209,59 @@ pub const MAX_UI_SCALE: f32 = 1.2;
 ///
 /// Increases camera height to maintain field of view on narrow screens.
 pub const PORTRAIT_CAMERA_SCALE: f32 = 1.5;
+
+// ============================================================================
+// UI DIMENSIONS
+// ============================================================================
+
+/// Standard button width in pixels.
+pub const UI_BUTTON_WIDTH: f32 = 180.0;
+
+/// Standard button height in pixels.
+pub const UI_BUTTON_HEIGHT: f32 = 55.0;
+
+/// Curl button (IN/OUT) width in pixels.
+pub const UI_CURL_BUTTON_WIDTH: f32 = 60.0;
+
+/// Curl button (IN/OUT) height in pixels.
+pub const UI_CURL_BUTTON_HEIGHT: f32 = 50.0;
+
+/// Z-offset for broom visual above ice surface.
+pub const BROOM_Z_OFFSET: f32 = 0.05;
+
+// ============================================================================
+// AI CONSTANTS
+// ============================================================================
+
+/// Minimum AI "thinking" delay in seconds.
+pub const AI_THINK_TIME_MIN: f32 = 1.0;
+
+/// Maximum AI "thinking" delay in seconds.
+pub const AI_THINK_TIME_MAX: f32 = 2.0;
+
+/// Probability (0.0-1.0) that AI makes a suboptimal shot choice.
+pub const AI_MISTAKE_CHANCE: f32 = 0.05;
+
+/// Weight values for AI broom search grid.
+///
+/// AI searches this grid to find optimal weight for each shot.
+pub const AI_WEIGHT_SEARCH_STEPS: [f32; 13] = [
+    1.0, 2.0, 3.0, 4.0, 4.5, 5.0, 5.5, 6.0, 6.5, 7.0, 8.0, 9.0, 10.0,
+];
+
+/// X-offset values for AI broom search grid in meters.
+///
+/// AI searches these offsets to compensate for curl.
+pub const AI_X_OFFSET_RANGE: [f32; 11] = [
+    -2.0, -1.5, -1.0, -0.5, -0.25, 0.0, 0.25, 0.5, 1.0, 1.5, 2.0,
+];
+
+// ============================================================================
+// UI COLORS (as SRGBA values)
+// ============================================================================
+
+/// Curl button background when selected.
+pub const COLOR_CURL_SELECTED: (f32, f32, f32, f32) = (0.3, 0.5, 0.3, 0.9);
+
+/// Curl button background when not selected.
+pub const COLOR_CURL_DESELECTED: (f32, f32, f32, f32) = (0.2, 0.2, 0.3, 0.8);

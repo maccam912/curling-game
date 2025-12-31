@@ -32,21 +32,25 @@
 use bevy::prelude::*;
 use bevy_rapier2d::prelude::*;
 
+pub mod ai_strategy;
 pub mod app_state;
 pub mod components;
 pub mod constants;
 pub mod helpers;
 pub mod network;
 pub mod resources;
+pub mod rules;
 pub mod systems;
 pub mod viewport;
 
 // Re-export commonly used items
+pub use ai_strategy::*;
 pub use app_state::*;
 pub use components::*;
 pub use constants::*;
 pub use network::*;
 pub use resources::*;
+pub use rules::*;
 pub use viewport::*;
 
 /// The main curling game plugin.
