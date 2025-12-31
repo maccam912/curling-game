@@ -350,6 +350,34 @@ pub fn update_ui(
     }
 }
 
+/// Updates the thrower info text to show current player's position and skills.
+///
+/// Shows the current thrower's position (Lead/Second/Third/Skip) and their
+/// skill levels for weight and aim. Only visible during CallingShot and Aiming phases.
+pub fn update_thrower_info(
+    state: Res<GameState>,
+    personalities: Res<PlayerPersonalities>,
+    mut query: Query<(&mut Text, &mut Visibility), With<ThrowerInfoText>>,
+) {
+    for (mut text, mut visibility) in query.iter_mut() {
+        // Only show during calling and aiming phases
+        if state.phase == Phase::CallingShot || state.phase == Phase::Aiming {
+            let personality =
+                personalities.current_thrower(state.shot_index, state.first_throw_team);
+            **text = format!(
+                "{}: {}, {}",
+                personality.position.name(),
+                personality.weight_skill.name(),
+                personality.aim_skill.name()
+            );
+            *visibility = Visibility::Visible;
+        } else {
+            **text = "".to_string();
+            *visibility = Visibility::Hidden;
+        }
+    }
+}
+
 /// Updates the score summary panel visibility and content.
 ///
 /// Shows the panel during ShowingScore phase with the pending end score.

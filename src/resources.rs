@@ -11,7 +11,9 @@
 
 use bevy::prelude::*;
 
-use crate::components::{CurlDirection, Phase, ShotType, Team};
+use crate::components::{
+    AimSkill, CurlDirection, Phase, PlayerPosition, ShotType, Team, WeightSkill,
+};
 use crate::constants::{BACK_FROM_TEE, DELIVERY_START_Y, TEE_FROM_CENTER, WEIGHT_MAX, WEIGHT_MIN};
 use crate::helpers::{back_line_far, hog_line_far};
 
@@ -330,4 +332,166 @@ pub struct PredictionState {
     pub confidence: f32,
     /// Whether the prediction is currently valid and should be displayed.
     pub is_valid: bool,
+}
+
+// ============================================================================
+// PLAYER PERSONALITIES
+// ============================================================================
+
+/// A single player's personality/skill profile.
+#[derive(Clone, Debug)]
+pub struct PlayerPersonality {
+    /// Player's position on the team.
+    pub position: PlayerPosition,
+    /// Skill at controlling weight.
+    pub weight_skill: WeightSkill,
+    /// Skill at aiming.
+    pub aim_skill: AimSkill,
+}
+
+impl PlayerPersonality {
+    /// Creates a new player personality.
+    pub fn new(position: PlayerPosition, weight_skill: WeightSkill, aim_skill: AimSkill) -> Self {
+        Self {
+            position,
+            weight_skill,
+            aim_skill,
+        }
+    }
+
+    /// Returns the total skill score (higher = better player).
+    pub fn total_score(&self) -> u8 {
+        self.weight_skill.score() + self.aim_skill.score()
+    }
+
+    /// Returns a display string describing this player's skills.
+    pub fn description(&self) -> String {
+        format!(
+            "{}: {}, {}",
+            self.position.name(),
+            self.weight_skill.name(),
+            self.aim_skill.name()
+        )
+    }
+
+    /// Applies weight variance based on skill and returns the adjusted weight.
+    pub fn apply_weight_variance(&self, weight: f32, rng: &mut impl rand::Rng) -> f32 {
+        use crate::constants::{WEIGHT_MAX, WEIGHT_MIN};
+
+        let variance = match self.weight_skill {
+            WeightSkill::Good => rng.random_range(-0.2..0.2),
+            WeightSkill::Average => rng.random_range(-0.5..0.5),
+            WeightSkill::Poor => rng.random_range(-1.0..1.0),
+            WeightSkill::TendsHeavy => rng.random_range(0.3..1.0),
+            WeightSkill::TendsLight => rng.random_range(-1.0..-0.3),
+        };
+
+        (weight + variance).clamp(WEIGHT_MIN, WEIGHT_MAX)
+    }
+
+    /// Applies aim variance based on skill and returns the adjusted angle.
+    pub fn apply_aim_variance(&self, angle_deg: f32, rng: &mut impl rand::Rng) -> f32 {
+        use crate::constants::ANGLE_LIMIT_DEG;
+
+        let variance = match self.aim_skill {
+            AimSkill::Good => rng.random_range(-0.5..0.5),
+            AimSkill::Average => rng.random_range(-1.5..1.5),
+            AimSkill::Poor => rng.random_range(-3.0..3.0),
+            AimSkill::TendsWide => {
+                // Wide = away from center, so bias in same direction as current angle
+                let bias = rng.random_range(0.5..2.0);
+                if angle_deg >= 0.0 { bias } else { -bias }
+            }
+            AimSkill::TendsNarrow => {
+                // Narrow = toward center, so bias opposite to current angle
+                let bias = rng.random_range(0.5..2.0);
+                if angle_deg >= 0.0 { -bias } else { bias }
+            }
+        };
+
+        (angle_deg + variance).clamp(-ANGLE_LIMIT_DEG, ANGLE_LIMIT_DEG)
+    }
+}
+
+/// Resource holding all player personalities for both teams.
+///
+/// Each team has 4 players (Lead, Second, Third, Skip) with unique skill profiles.
+/// Personalities are generated at game start and persist through the entire game.
+#[derive(Resource)]
+pub struct PlayerPersonalities {
+    /// Team 1's players, ordered by position (Lead first, Skip last).
+    pub team1: [PlayerPersonality; 4],
+    /// Team 2's players, ordered by position (Lead first, Skip last).
+    pub team2: [PlayerPersonality; 4],
+}
+
+impl Default for PlayerPersonalities {
+    fn default() -> Self {
+        Self {
+            team1: [
+                PlayerPersonality::new(
+                    PlayerPosition::Lead,
+                    WeightSkill::Average,
+                    AimSkill::Average,
+                ),
+                PlayerPersonality::new(
+                    PlayerPosition::Second,
+                    WeightSkill::Average,
+                    AimSkill::Average,
+                ),
+                PlayerPersonality::new(
+                    PlayerPosition::Third,
+                    WeightSkill::Average,
+                    AimSkill::Average,
+                ),
+                PlayerPersonality::new(PlayerPosition::Skip, WeightSkill::Good, AimSkill::Good),
+            ],
+            team2: [
+                PlayerPersonality::new(
+                    PlayerPosition::Lead,
+                    WeightSkill::Average,
+                    AimSkill::Average,
+                ),
+                PlayerPersonality::new(
+                    PlayerPosition::Second,
+                    WeightSkill::Average,
+                    AimSkill::Average,
+                ),
+                PlayerPersonality::new(
+                    PlayerPosition::Third,
+                    WeightSkill::Average,
+                    AimSkill::Average,
+                ),
+                PlayerPersonality::new(PlayerPosition::Skip, WeightSkill::Good, AimSkill::Good),
+            ],
+        }
+    }
+}
+
+impl PlayerPersonalities {
+    /// Gets the personality of the player throwing the current shot.
+    ///
+    /// Uses shot_index (0-15) and first_throw_team to determine which player is throwing.
+    pub fn current_thrower(&self, shot_index: u8, first_throw_team: Team) -> &PlayerPersonality {
+        // Determine which team is throwing
+        let throwing_team = if shot_index % 2 == 0 {
+            first_throw_team
+        } else {
+            first_throw_team.opponent()
+        };
+
+        // Determine which stone number this is for the team (0-7)
+        // Even shots: team1 throws 0,2,4,6,8,10,12,14 -> stone 0,1,2,3,4,5,6,7
+        // So team_stone_index = shot_index / 2 for first_throw_team
+        let team_stone_index = shot_index / 2;
+
+        // Get position index (0=Lead throws stones 0-1, 1=Second throws 2-3, etc.)
+        let position_index = (team_stone_index / 2) as usize;
+        let position_index = position_index.min(3); // Clamp to valid range
+
+        match throwing_team {
+            Team::One => &self.team1[position_index],
+            Team::Two => &self.team2[position_index],
+        }
+    }
 }

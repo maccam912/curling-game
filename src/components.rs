@@ -15,6 +15,123 @@ use serde::{Deserialize, Serialize};
 use crate::constants::CURL_ANGULAR_VELOCITY;
 
 // ============================================================================
+// PLAYER POSITION & SKILLS
+// ============================================================================
+
+/// Player positions in curling (Lead throws first, Skip last).
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+pub enum PlayerPosition {
+    /// Throws shots 1-2 for their team (worst skills).
+    #[default]
+    Lead,
+    /// Throws shots 3-4 for their team.
+    Second,
+    /// Throws shots 5-6 for their team.
+    Third,
+    /// Throws shots 7-8 for their team (best skills).
+    Skip,
+}
+
+impl PlayerPosition {
+    /// Returns the position based on which stone number (0-7) a player throws for their team.
+    pub fn from_team_stone_index(stone_index: u8) -> Self {
+        match stone_index {
+            0 | 1 => PlayerPosition::Lead,
+            2 | 3 => PlayerPosition::Second,
+            4 | 5 => PlayerPosition::Third,
+            6 | 7 => PlayerPosition::Skip,
+            _ => PlayerPosition::Skip,
+        }
+    }
+
+    /// Returns the display name for this position.
+    pub fn name(self) -> &'static str {
+        match self {
+            PlayerPosition::Lead => "Lead",
+            PlayerPosition::Second => "Second",
+            PlayerPosition::Third => "Third",
+            PlayerPosition::Skip => "Skip",
+        }
+    }
+}
+
+/// Weight skill level - affects how accurately a player throws the intended weight.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum WeightSkill {
+    /// Excellent weight control (±0.2 variance).
+    Good,
+    /// Average weight control (±0.5 variance).
+    Average,
+    /// Poor weight control (±1.0 variance).
+    Poor,
+    /// Tends to throw heavy/light (+0.3 to +1.0 bias).
+    TendsHeavy,
+    /// Tends to throw light/short (-1.0 to -0.3 bias).
+    TendsLight,
+}
+
+impl WeightSkill {
+    /// Returns the display name for this skill.
+    pub fn name(self) -> &'static str {
+        match self {
+            WeightSkill::Good => "Good Weight",
+            WeightSkill::Average => "Average Weight",
+            WeightSkill::Poor => "Poor Weight",
+            WeightSkill::TendsHeavy => "Tends Heavy",
+            WeightSkill::TendsLight => "Tends Light",
+        }
+    }
+
+    /// Returns a skill score (higher = better) for sorting.
+    pub fn score(self) -> u8 {
+        match self {
+            WeightSkill::Good => 3,
+            WeightSkill::Average => 2,
+            WeightSkill::TendsHeavy | WeightSkill::TendsLight => 1,
+            WeightSkill::Poor => 0,
+        }
+    }
+}
+
+/// Aim skill level - affects how accurately a player throws the intended angle.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum AimSkill {
+    /// Excellent aim (±0.5° variance).
+    Good,
+    /// Average aim (±1.5° variance).
+    Average,
+    /// Poor aim (±3.0° variance).
+    Poor,
+    /// Tends to miss wide (+0.5° to +2.0° bias away from center).
+    TendsWide,
+    /// Tends to miss narrow (-2.0° to -0.5° bias toward center).
+    TendsNarrow,
+}
+
+impl AimSkill {
+    /// Returns the display name for this skill.
+    pub fn name(self) -> &'static str {
+        match self {
+            AimSkill::Good => "Good Aim",
+            AimSkill::Average => "Average Aim",
+            AimSkill::Poor => "Poor Aim",
+            AimSkill::TendsWide => "Tends Wide",
+            AimSkill::TendsNarrow => "Tends Narrow",
+        }
+    }
+
+    /// Returns a skill score (higher = better) for sorting.
+    pub fn score(self) -> u8 {
+        match self {
+            AimSkill::Good => 3,
+            AimSkill::Average => 2,
+            AimSkill::TendsWide | AimSkill::TendsNarrow => 1,
+            AimSkill::Poor => 0,
+        }
+    }
+}
+
+// ============================================================================
 // TEAM
 // ============================================================================
 
@@ -335,6 +452,10 @@ pub struct TeamTurnIndicator;
 /// Marker for the game phase indicator.
 #[derive(Component)]
 pub struct PhaseIndicator;
+
+/// Marker for the thrower info text (shows current player's position and skills).
+#[derive(Component)]
+pub struct ThrowerInfoText;
 
 /// Marker for stones that count toward the score (applied during ShowingScore phase).
 #[derive(Component)]

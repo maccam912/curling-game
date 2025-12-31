@@ -9,7 +9,7 @@ use rand::Rng;
 use crate::components::{CurlDirection, Phase, ShotType, Stone, Team};
 use crate::constants::*;
 use crate::helpers::{back_line_far, hog_line_far, snapshot_stones, spawn_stone, tee_line_far};
-use crate::resources::{GameState, StoneAssets};
+use crate::resources::{GameState, PlayerPersonalities, StoneAssets};
 use crate::systems::prediction::predict_stone_trajectory;
 
 // ============================================================================
@@ -20,17 +20,8 @@ use crate::systems::prediction::predict_stone_trajectory;
 const AI_THINK_TIME_MIN: f32 = 1.0;
 const AI_THINK_TIME_MAX: f32 = 2.0;
 
-/// Maximum angle variance for AI imperfection (degrees).
-const AI_ANGLE_VARIANCE: f32 = 2.0;
-
-/// Maximum weight variance for AI imperfection (on 1-10 scale).
-const AI_WEIGHT_VARIANCE: f32 = 0.5;
-
 /// Chance (0.0-1.0) the AI picks a suboptimal shot type.
-const AI_MISTAKE_CHANCE: f32 = 0.15;
-
-/// Maximum position miss for target (meters).
-const AI_TARGET_MISS: f32 = 0.3;
+const AI_MISTAKE_CHANCE: f32 = 0.05;
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -145,6 +136,7 @@ pub fn ai_turn_system(
     mut commands: Commands,
     assets: Res<StoneAssets>,
     stones: Query<(Entity, &Transform, &Stone)>,
+    personalities: Res<PlayerPersonalities>,
 ) {
     // Only act if AI is enabled and it's AI's turn
     let ai_team = match state.ai_team {
@@ -186,13 +178,9 @@ pub fn ai_turn_system(
             state.called_angle_deg = state.angle_from_broom();
             state.called_weight = state.weight_from_broom();
 
-            // Add imperfection to aim
-            let mut rng = rand::rng();
-            state.aim_angle_deg =
-                state.called_angle_deg + rng.random_range(-AI_ANGLE_VARIANCE..AI_ANGLE_VARIANCE);
-            state.aim_weight = (state.called_weight
-                + rng.random_range(-AI_WEIGHT_VARIANCE..AI_WEIGHT_VARIANCE))
-            .clamp(WEIGHT_MIN, WEIGHT_MAX);
+            // Set aim to called values (personality variance applied at throw time)
+            state.aim_angle_deg = state.called_angle_deg;
+            state.aim_weight = state.called_weight;
 
             tracing::info!(
                 "AI calling shot: {:?} to ({:.2}, {:.2}), weight {:.1}",
@@ -208,7 +196,7 @@ pub fn ai_turn_system(
         }
         Phase::Aiming => {
             // Execute the throw
-            execute_ai_throw(&mut state, &mut commands, &assets, &stones);
+            execute_ai_throw(&mut state, &mut commands, &assets, &stones, &personalities);
         }
         _ => {}
     }
@@ -269,9 +257,7 @@ fn calculate_ai_shot(
         &mut rng,
     );
 
-    // Add position imperfection to the target
-    target.x += rng.random_range(-AI_TARGET_MISS..AI_TARGET_MISS);
-    target.y += rng.random_range(-AI_TARGET_MISS..AI_TARGET_MISS);
+    // No target position fuzz - personality variance is applied at throw time
 
     // Clamp target to valid playing area
     let half_width = SHEET_WIDTH * 0.5 - STONE_RADIUS;
@@ -404,13 +390,22 @@ fn execute_ai_throw(
     commands: &mut Commands,
     assets: &StoneAssets,
     stones: &Query<(Entity, &Transform, &Stone)>,
+    personalities: &PlayerPersonalities,
 ) {
     let team = state.current_team();
     let curl = state.curl_direction;
 
-    // Calculate throw velocity
-    let angle_rad = state.aim_angle_deg.to_radians();
-    let normalized_weight = (state.aim_weight - WEIGHT_MIN) / (WEIGHT_MAX - WEIGHT_MIN);
+    // Get the current thrower's personality and apply variance
+    let personality = personalities.current_thrower(state.shot_index, state.first_throw_team);
+    let mut rng = rand::rng();
+
+    // Apply personality variance to aim and weight
+    let actual_angle = personality.apply_aim_variance(state.aim_angle_deg, &mut rng);
+    let actual_weight = personality.apply_weight_variance(state.aim_weight, &mut rng);
+
+    // Calculate throw velocity with personality-adjusted values
+    let angle_rad = actual_angle.to_radians();
+    let normalized_weight = (actual_weight - WEIGHT_MIN) / (WEIGHT_MAX - WEIGHT_MIN);
     let speed = WEIGHT_MIN_SPEED + normalized_weight * (WEIGHT_MAX_SPEED - WEIGHT_MIN_SPEED);
 
     let velocity = Vec2::new(angle_rad.sin() * speed, angle_rad.cos() * speed);
@@ -428,10 +423,15 @@ fn execute_ai_throw(
     state.ai_think_timer = 0.0;
 
     tracing::info!(
-        "AI threw stone: angle {:.1}°, weight {:.1}, curl {:?}",
+        "AI {} threw stone: intended angle {:.1}°, actual {:.1}°, intended weight {:.1}, actual {:.1}, curl {:?} ({}, {})",
+        personality.position.name(),
         state.aim_angle_deg,
+        actual_angle,
         state.aim_weight,
-        curl
+        actual_weight,
+        curl,
+        personality.weight_skill.name(),
+        personality.aim_skill.name()
     );
 }
 

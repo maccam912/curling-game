@@ -165,6 +165,7 @@ impl Plugin for CurlingPlugin {
                     systems::configure_rapier,
                     systems::setup_ui,
                     systems::randomize_first_team,
+                    systems::generate_player_personalities,
                 ),
             )
             // Physics systems run at fixed rate for consistency (FPS-independent)
@@ -200,6 +201,7 @@ impl Plugin for CurlingPlugin {
                     systems::apply_responsive_ui,
                     systems::update_prediction,
                     systems::update_ghost_stone_visual,
+                    systems::update_thrower_info,
                 )
                     .run_if(in_state(app_state::AppState::PassAndPlay)),
             )
@@ -214,6 +216,7 @@ impl Plugin for CurlingPlugin {
                     systems::setup_ui,
                     systems::randomize_first_team,
                     systems::setup_ai_game,
+                    systems::generate_player_personalities,
                 ),
             )
             // Physics systems for VS AI (FPS-independent)
@@ -258,6 +261,7 @@ impl Plugin for CurlingPlugin {
                     systems::ai_turn_system,
                     systems::update_prediction,
                     systems::update_ghost_stone_visual,
+                    systems::update_thrower_info,
                 )
                     .run_if(in_state(app_state::AppState::VsAI)),
             )
@@ -273,6 +277,7 @@ impl Plugin for CurlingPlugin {
                     systems::setup_online_game,
                     systems::spawn_your_team_indicator,
                     systems::spawn_connection_status_indicator,
+                    systems::generate_player_personalities,
                 ),
             )
             // Physics systems for online game (FPS-independent)
@@ -338,6 +343,7 @@ impl Plugin for CurlingPlugin {
                     systems::apply_responsive_ui,
                     systems::update_prediction,
                     systems::update_ghost_stone_visual,
+                    systems::update_thrower_info,
                 )
                     .run_if(in_state(app_state::AppState::OnlineGame)),
             )

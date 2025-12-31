@@ -12,7 +12,7 @@ use tracing::{debug, info};
 use crate::components::*;
 use crate::constants::*;
 use crate::helpers::*;
-use crate::resources::{GameState, StoneAssets};
+use crate::resources::{GameState, PlayerPersonalities, PlayerPersonality, StoneAssets};
 
 /// Randomizes which team throws first at game start.
 ///
@@ -29,6 +29,80 @@ pub fn randomize_first_team(mut state: ResMut<GameState>) {
         hammer = state.first_throw_team.opponent().name(),
         "Randomized starting teams"
     );
+}
+
+/// Generates random player personalities for both teams.
+///
+/// Each team gets 4 players with random skill combinations.
+/// Players are sorted so weaker players throw first (Lead) and
+/// stronger players throw last (Skip).
+pub fn generate_player_personalities(mut commands: Commands) {
+    let mut rng = rand::rng();
+
+    // All possible weight skills
+    let weight_skills = [
+        WeightSkill::Good,
+        WeightSkill::Average,
+        WeightSkill::Poor,
+        WeightSkill::TendsHeavy,
+        WeightSkill::TendsLight,
+    ];
+
+    // All possible aim skills
+    let aim_skills = [
+        AimSkill::Good,
+        AimSkill::Average,
+        AimSkill::Poor,
+        AimSkill::TendsWide,
+        AimSkill::TendsNarrow,
+    ];
+
+    // Generate random personalities for a team and sort by skill (worst first)
+    let generate_team = |rng: &mut rand::prelude::ThreadRng| -> [PlayerPersonality; 4] {
+        let positions = [
+            PlayerPosition::Lead,
+            PlayerPosition::Second,
+            PlayerPosition::Third,
+            PlayerPosition::Skip,
+        ];
+
+        // Generate 4 random skill combinations
+        let mut players: Vec<(WeightSkill, AimSkill, u8)> = (0..4)
+            .map(|_| {
+                let w = weight_skills[rng.random_range(0..weight_skills.len())];
+                let a = aim_skills[rng.random_range(0..aim_skills.len())];
+                let score = w.score() + a.score();
+                (w, a, score)
+            })
+            .collect();
+
+        // Sort by score (ascending - worst first for Lead)
+        players.sort_by_key(|p| p.2);
+
+        // Assign positions
+        [
+            PlayerPersonality::new(positions[0], players[0].0, players[0].1),
+            PlayerPersonality::new(positions[1], players[1].0, players[1].1),
+            PlayerPersonality::new(positions[2], players[2].0, players[2].1),
+            PlayerPersonality::new(positions[3], players[3].0, players[3].1),
+        ]
+    };
+
+    let team1 = generate_team(&mut rng);
+    let team2 = generate_team(&mut rng);
+
+    // Log the generated personalities
+    info!("Generated player personalities:");
+    info!("Team 1:");
+    for p in &team1 {
+        info!("  {}", p.description());
+    }
+    info!("Team 2:");
+    for p in &team2 {
+        info!("  {}", p.description());
+    }
+
+    commands.insert_resource(PlayerPersonalities { team1, team2 });
 }
 
 /// Configures the Rapier physics engine.
@@ -542,6 +616,17 @@ pub fn setup_ui(mut commands: Commands) {
                                 ..default()
                             },
                             TextColor(Color::srgb(0.6, 0.8, 0.6)),
+                        ));
+
+                        // Thrower info (position and skills)
+                        info.spawn((
+                            ThrowerInfoText,
+                            Text::new(""),
+                            TextFont {
+                                font_size: 12.0,
+                                ..default()
+                            },
+                            TextColor(Color::srgb(0.8, 0.8, 0.6)),
                         ));
                     });
                 });

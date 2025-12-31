@@ -98,6 +98,7 @@ pub fn handle_aiming_input(
     mut commands: Commands,
     assets: Res<StoneAssets>,
     stones: Query<(Entity, &Transform, &Stone)>,
+    personalities: Res<PlayerPersonalities>,
 ) {
     if state.phase != Phase::Aiming {
         return;
@@ -134,7 +135,7 @@ pub fn handle_aiming_input(
 
     // Throw the stone
     if input.just_pressed(KeyCode::Space) {
-        throw_stone(&mut state, &mut commands, &assets, &stones);
+        throw_stone(&mut state, &mut commands, &assets, &stones, &personalities);
     }
 }
 
@@ -281,6 +282,7 @@ pub fn handle_touch_input(
     mut commands: Commands,
     assets: Res<StoneAssets>,
     stones: Query<(Entity, &Transform, &Stone)>,
+    personalities: Res<PlayerPersonalities>,
 ) {
     // Handle curl direction button clicks
     for (interaction, curl_btn, mut bg_color) in curl_buttons.iter_mut() {
@@ -330,7 +332,7 @@ pub fn handle_touch_input(
                         );
                     }
                     Phase::Aiming => {
-                        throw_stone(&mut state, &mut commands, &assets, &stones);
+                        throw_stone(&mut state, &mut commands, &assets, &stones, &personalities);
                     }
                     _ => {}
                 }
@@ -354,20 +356,30 @@ pub fn handle_touch_input(
 /// Helper function to throw a stone.
 ///
 /// Creates the stone entity, sets up the snapshot for FGZ checking,
-/// and transitions to StoneMoving phase.
+/// applies player personality variance to the shot, and transitions to StoneMoving phase.
 fn throw_stone(
     state: &mut ResMut<GameState>,
     commands: &mut Commands,
     assets: &StoneAssets,
     stones: &Query<(Entity, &Transform, &Stone)>,
+    personalities: &PlayerPersonalities,
 ) {
     let snapshot = snapshot_stones(stones, state.shot_index);
     state.snapshot = Some(snapshot);
 
     let team = state.current_team();
-    let weight_normalized = (state.aim_weight - 1.0) / 9.0;
+
+    // Get the current thrower's personality and apply variance
+    let personality = personalities.current_thrower(state.shot_index, state.first_throw_team);
+    let mut rng = rand::rng();
+
+    // Apply personality variance to aim and weight
+    let actual_angle = personality.apply_aim_variance(state.aim_angle_deg, &mut rng);
+    let actual_weight = personality.apply_weight_variance(state.aim_weight, &mut rng);
+
+    let weight_normalized = (actual_weight - 1.0) / 9.0;
     let speed = WEIGHT_MIN_SPEED + weight_normalized * (WEIGHT_MAX_SPEED - WEIGHT_MIN_SPEED);
-    let angle_rad = state.aim_angle_deg.to_radians();
+    let angle_rad = actual_angle.to_radians();
     let direction = Vec2::new(angle_rad.sin(), angle_rad.cos());
     let start = Vec2::new(0.0, DELIVERY_START_Y);
 
@@ -388,10 +400,16 @@ fn throw_stone(
     info!(
         shot_index = state.shot_index + 1,
         team = team.name(),
-        angle = state.aim_angle_deg,
-        weight = state.aim_weight,
+        position = personality.position.name(),
+        intended_angle = state.aim_angle_deg,
+        actual_angle = actual_angle,
+        intended_weight = state.aim_weight,
+        actual_weight = actual_weight,
         speed = speed,
         curl = ?state.curl_direction,
-        "Stone thrown"
+        "Stone thrown by {} ({}, {})",
+        personality.position.name(),
+        personality.weight_skill.name(),
+        personality.aim_skill.name()
     );
 }
