@@ -143,6 +143,7 @@ pub fn setup_scene(
     ));
     debug!(position = ?skip_view_pos, "Spawned main camera");
 
+    // Main light (above ice)
     commands.spawn((
         DirectionalLight {
             illuminance: 8000.0,
@@ -151,11 +152,22 @@ pub fn setup_scene(
         Transform::from_xyz(0.0, -12.0, 60.0).looking_at(Vec3::new(0.0, 12.0, 0.0), Vec3::Z),
     ));
 
+    // Mirrored light (below ice for reflections, no shadows)
+    commands.spawn((
+        DirectionalLight {
+            illuminance: 8000.0,
+            shadows_enabled: false,
+            ..default()
+        },
+        Transform::from_xyz(0.0, -12.0, -60.0).looking_at(Vec3::new(0.0, 12.0, 0.0), Vec3::NEG_Z),
+    ));
+
     // Ice Sheet
     let sheet_mesh = meshes.add(Cuboid::new(SHEET_WIDTH, SHEET_LENGTH, SHEET_THICKNESS));
     let sheet_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.95, 0.96, 0.98),
+        base_color: Color::srgba(0.95, 0.96, 0.98, 0.1),
         perceptual_roughness: 0.2,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
         ..default()
     });
     commands.spawn((
@@ -171,18 +183,21 @@ pub fn setup_scene(
 
     // Line Materials
     let line_black = materials.add(StandardMaterial {
-        base_color: Color::BLACK,
+        base_color: Color::srgba(0.0, 0.0, 0.0, 0.1),
         unlit: true,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
         ..default()
     });
     let line_red = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.8, 0.1, 0.1),
+        base_color: Color::srgba(0.8, 0.1, 0.1, 0.1),
         unlit: true,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
         ..default()
     });
     let line_blue = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.1, 0.1, 0.8),
+        base_color: Color::srgba(0.1, 0.1, 0.8, 0.1),
         unlit: true,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
         ..default()
     });
 
@@ -250,18 +265,21 @@ pub fn setup_scene(
 
     // House Materials
     let ring_blue = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.1, 0.2, 0.8),
+        base_color: Color::srgba(0.1, 0.2, 0.8, 0.1),
         unlit: true,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
         ..default()
     });
     let ring_white = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.95, 0.95, 0.95),
+        base_color: Color::srgba(0.95, 0.95, 0.95, 0.1),
         unlit: true,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
         ..default()
     });
     let ring_red = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.8, 0.1, 0.1),
+        base_color: Color::srgba(0.8, 0.1, 0.1, 0.1),
         unlit: true,
+        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
         ..default()
     });
 
