@@ -237,50 +237,164 @@ pub fn setup_scene(
     });
 
     // Ice Sheet with pebbling texture
-    let sheet_mesh = meshes.add(Cuboid::new(SHEET_WIDTH, SHEET_LENGTH, SHEET_THICKNESS));
+    // Must generate tangents for normal maps to work!
+    let mut sheet_mesh_data = Mesh::from(Cuboid::new(SHEET_WIDTH, SHEET_LENGTH, SHEET_THICKNESS));
+    sheet_mesh_data
+        .generate_tangents()
+        .expect("Failed to generate tangents for ice sheet");
+    let sheet_mesh = meshes.add(sheet_mesh_data);
 
-    // Generate noise normal map for pebbling effect
-    // Creates small bumps that catch the light like frozen water droplets
-    let pebble_size = 256u32;
-    let mut pebble_data = Vec::with_capacity((pebble_size * pebble_size * 4) as usize);
+    // Generate smooth pebbling using value noise with bilinear interpolation
+    // This creates natural-looking bumps instead of harsh per-pixel noise
+    let texture_size = 256u32; // Larger texture = less visible tiling
+    let grid_size = 32u32; // Random values at grid points, interpolate between
     let mut rng = rand::rng();
-    for _ in 0..(pebble_size * pebble_size) {
-        // Normal map uses RGB where (128,128,255) = flat surface pointing up
-        // Increase variation for visible pebbling effect
-        let variation = 0.4; // Noticeable pebbling
-        let nx = (128.0 + (rng.random::<f32>() - 0.5) * 255.0 * variation).clamp(0.0, 255.0);
-        let ny = (128.0 + (rng.random::<f32>() - 0.5) * 255.0 * variation).clamp(0.0, 255.0);
-        let nz = 200.0; // Slightly less than 255 to allow for angled normals
-        pebble_data.push(nx as u8);
-        pebble_data.push(ny as u8);
-        pebble_data.push(nz as u8);
-        pebble_data.push(255); // Alpha
+
+    // Generate random heights at grid points (0.0 to 1.0)
+    let grid: Vec<f32> = (0..((grid_size + 1) * (grid_size + 1)))
+        .map(|_| rng.random::<f32>())
+        .collect();
+
+    // Helper to get grid value with wrapping for seamless tiling
+    let get_grid = |gx: u32, gy: u32| -> f32 {
+        let gx = gx % (grid_size + 1);
+        let gy = gy % (grid_size + 1);
+        grid[(gy * (grid_size + 1) + gx) as usize]
+    };
+
+    // Bilinear interpolation helper
+    let lerp = |a: f32, b: f32, t: f32| a + t * (b - a);
+    let smoothstep = |t: f32| t * t * (3.0 - 2.0 * t); // Smoother interpolation
+
+    // Generate heightmap with smooth interpolation
+    let mut heightmap: Vec<f32> = Vec::with_capacity((texture_size * texture_size) as usize);
+    let cell_size = texture_size as f32 / grid_size as f32;
+
+    for py in 0..texture_size {
+        for px in 0..texture_size {
+            // Find which grid cell we're in
+            let fx = px as f32 / cell_size;
+            let fy = py as f32 / cell_size;
+            let gx = fx as u32;
+            let gy = fy as u32;
+
+            // Fractional position within cell (0-1)
+            let tx = smoothstep(fx - gx as f32);
+            let ty = smoothstep(fy - gy as f32);
+
+            // Get four corner values
+            let v00 = get_grid(gx, gy);
+            let v10 = get_grid(gx + 1, gy);
+            let v01 = get_grid(gx, gy + 1);
+            let v11 = get_grid(gx + 1, gy + 1);
+
+            // Bilinear interpolation
+            let v0 = lerp(v00, v10, tx);
+            let v1 = lerp(v01, v11, tx);
+            let height = lerp(v0, v1, ty);
+
+            heightmap.push(height);
+        }
     }
 
-    let pebble_image = Image::new(
+    // Generate normal map from heightmap using gradient
+    let bump_strength = 0.3; // How pronounced the bumps appear
+    let mut normal_data = Vec::with_capacity((texture_size * texture_size * 4) as usize);
+
+    for py in 0..texture_size {
+        for px in 0..texture_size {
+            // Sample neighboring heights for gradient (with wrapping)
+            let left = heightmap[((py * texture_size + (px + texture_size - 1) % texture_size)) as usize];
+            let right = heightmap[((py * texture_size + (px + 1) % texture_size)) as usize];
+            let up = heightmap[(((py + texture_size - 1) % texture_size * texture_size + px)) as usize];
+            let down = heightmap[(((py + 1) % texture_size * texture_size + px)) as usize];
+
+            // Gradient (derivative of height)
+            let dx = (right - left) * bump_strength;
+            let dy = (down - up) * bump_strength;
+
+            // Convert gradient to normal (pointing mostly up)
+            // Normal = normalize(-dx, -dy, 1)
+            let len = (dx * dx + dy * dy + 1.0).sqrt();
+            let nx = -dx / len;
+            let ny = -dy / len;
+            let nz = 1.0 / len;
+
+            // Convert from [-1,1] to [0,255] range
+            normal_data.push(((nx * 0.5 + 0.5) * 255.0) as u8);
+            normal_data.push(((ny * 0.5 + 0.5) * 255.0) as u8);
+            normal_data.push(((nz * 0.5 + 0.5) * 255.0) as u8);
+            normal_data.push(255);
+        }
+    }
+
+    let mut normal_image = Image::new(
         bevy::render::render_resource::Extent3d {
-            width: pebble_size,
-            height: pebble_size,
+            width: texture_size,
+            height: texture_size,
             depth_or_array_layers: 1,
         },
         bevy::render::render_resource::TextureDimension::D2,
-        pebble_data,
+        normal_data,
         bevy::render::render_resource::TextureFormat::Rgba8Unorm,
-        bevy::asset::RenderAssetUsages::RENDER_WORLD,
+        bevy::asset::RenderAssetUsages::MAIN_WORLD | bevy::asset::RenderAssetUsages::RENDER_WORLD,
     );
-    let pebble_texture = images.add(pebble_image);
+    normal_image.sampler = bevy::image::ImageSampler::Descriptor(
+        bevy::image::ImageSamplerDescriptor {
+            address_mode_u: bevy::image::ImageAddressMode::Repeat,
+            address_mode_v: bevy::image::ImageAddressMode::Repeat,
+            ..default()
+        }
+    );
+    let normal_texture = images.add(normal_image);
+
+    // Generate depth map from heightmap for parallax effect
+    // White = bottom (low), Black = top (high) - inverted from heightmap
+    let mut depth_data = Vec::with_capacity((texture_size * texture_size * 4) as usize);
+    for &h in &heightmap {
+        let depth = ((1.0 - h) * 255.0) as u8; // Invert: high points = dark
+        depth_data.push(depth);
+        depth_data.push(depth);
+        depth_data.push(depth);
+        depth_data.push(255);
+    }
+
+    let mut depth_image = Image::new(
+        bevy::render::render_resource::Extent3d {
+            width: texture_size,
+            height: texture_size,
+            depth_or_array_layers: 1,
+        },
+        bevy::render::render_resource::TextureDimension::D2,
+        depth_data,
+        bevy::render::render_resource::TextureFormat::Rgba8Unorm,
+        bevy::asset::RenderAssetUsages::MAIN_WORLD | bevy::asset::RenderAssetUsages::RENDER_WORLD,
+    );
+    // Use Nearest filtering for depth map (better performance per Bevy docs)
+    depth_image.sampler = bevy::image::ImageSampler::Descriptor(
+        bevy::image::ImageSamplerDescriptor {
+            address_mode_u: bevy::image::ImageAddressMode::Repeat,
+            address_mode_v: bevy::image::ImageAddressMode::Repeat,
+            mag_filter: bevy::image::ImageFilterMode::Nearest,
+            min_filter: bevy::image::ImageFilterMode::Nearest,
+            ..default()
+        }
+    );
+    let depth_texture = images.add(depth_image);
 
     let sheet_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.92, 0.94, 0.98, 0.25), // More transparent
-        perceptual_roughness: 0.1, // Slightly rougher to show pebbling better
+        base_color: Color::srgba(0.92, 0.95, 0.98, 0.15), // More transparent to show paint
+        normal_map_texture: Some(normal_texture),
+        flip_normal_map_y: true,
+        depth_map: Some(depth_texture),
+        parallax_depth_scale: 0.02, // Subtle depth effect
+        max_parallax_layer_count: 8.0,
+        perceptual_roughness: 0.05, // Very smooth for sharp specular reflections
         metallic: 0.0,
-        reflectance: 0.7, // High reflectance for ice-like specularity
-        ior: 1.31,        // Index of refraction for ice
+        reflectance: 0.7, // High reflectance for ice
+        ior: 1.31,        // Ice refraction index
         alpha_mode: bevy::render::alpha::AlphaMode::Blend,
-        normal_map_texture: Some(pebble_texture.clone()),
-        flip_normal_map_y: true, // Bevy uses OpenGL convention
-        // Tile the texture - reduced tiling so pebbles are more visible
-        uv_transform: bevy::math::Affine2::from_scale(Vec2::new(8.0, 40.0)),
+        uv_transform: bevy::math::Affine2::from_scale(Vec2::new(4.0, 20.0)), // Less tiling with larger texture
         ..default()
     });
     commands.spawn((
@@ -382,6 +496,18 @@ pub fn setup_scene(
             OTHER_LINE_Z,
         );
     }
+
+    // White base layer under all paint (like real curling ice)
+    let base_white = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.95, 0.95, 0.95),
+        ..default()
+    });
+    let base_mesh = meshes.add(Cuboid::new(SHEET_WIDTH, SHEET_LENGTH, 0.001));
+    commands.spawn((
+        Mesh3d(base_mesh),
+        MeshMaterial3d(base_white),
+        Transform::from_translation(Vec3::new(0.0, 0.0, -0.008)), // Deepest layer
+    ));
 
     // House Materials (lit so they receive shadows)
     let ring_blue = materials.add(StandardMaterial {

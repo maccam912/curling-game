@@ -6,7 +6,8 @@
       "Bash(cargo test:*)",
       "Bash(cargo check:*)",
       "WebSearch",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(cargo build:*)"
     ]
   }
 }
