@@ -150,6 +150,10 @@ pub const MODEL_SCALE: f32 = 0.285;
 /// Z offset for GLB stone models to align with ice surface.
 pub const MODEL_Z_OFFSET: f32 = 0.10;
 
+/// Render layer for curling stones (layer 1).
+/// Stones are on both Layer 0 (default) and Layer 1.
+pub const STONE_LAYER: usize = 1;
+
 // ============================================================================
 // CAMERA CONSTANTS
 // ============================================================================

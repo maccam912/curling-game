@@ -356,6 +356,10 @@ pub struct Broom;
 #[derive(Component)]
 pub struct MainCamera;
 
+/// Marker component for the reflection camera.
+#[derive(Component)]
+pub struct ReflectionCamera;
+
 // ============================================================================
 // UI COMPONENTS
 // ============================================================================
@@ -414,12 +418,6 @@ pub struct HammerText;
 /// Marker for the GLB model visual.
 #[derive(Component)]
 pub struct StoneVisual;
-
-/// Marker for reflection visuals (below ice).
-///
-/// Used to disable shadow casting on reflection meshes.
-#[derive(Component)]
-pub struct ReflectionVisual;
 
 /// Marker component for the ghost stone prediction visual.
 ///

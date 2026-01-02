@@ -101,6 +101,8 @@ impl Plugin for CurlingPlugin {
                 brightness: 0.8,
                 affects_lightmapped_meshes: true,
             })
+            // Custom Materials
+            .add_plugins(MaterialPlugin::<systems::ice_material::IceMaterial>::default())
             // Game resources
             .insert_resource(resources::GameState::default())
             .insert_resource(resources::CameraState::default())
@@ -199,6 +201,7 @@ impl Plugin for CurlingPlugin {
                     systems::resolve_shot,
                     systems::handle_score_confirmation,
                     systems::camera_control_system,
+                    systems::update_reflection_camera,
                     systems::update_ui,
                 )
                     .run_if(in_state(app_state::AppState::PassAndPlay)),
@@ -214,7 +217,6 @@ impl Plugin for CurlingPlugin {
                     systems::update_thrower_info,
                     systems::update_hammer_icons,
                     systems::update_curl_buttons_visibility,
-                    systems::disable_reflection_shadows,
                 )
                     .run_if(in_state(app_state::AppState::PassAndPlay)),
             )
@@ -267,6 +269,7 @@ impl Plugin for CurlingPlugin {
                     systems::resolve_shot,
                     systems::handle_score_confirmation,
                     systems::camera_control_system,
+                    systems::update_reflection_camera,
                     systems::update_ui,
                     systems::update_score_summary_panel,
                     systems::update_game_over_panel,
@@ -283,7 +286,6 @@ impl Plugin for CurlingPlugin {
                     systems::update_thrower_info,
                     systems::update_hammer_icons,
                     systems::update_curl_buttons_visibility,
-                    systems::disable_reflection_shadows,
                 )
                     .run_if(in_state(app_state::AppState::VsAI)),
             )
@@ -359,6 +361,7 @@ impl Plugin for CurlingPlugin {
                     systems::resolve_shot,
                     systems::handle_score_confirmation,
                     systems::camera_control_system,
+                    systems::update_reflection_camera,
                     systems::update_ui,
                     systems::update_score_summary_panel,
                     systems::update_game_over_panel,
@@ -374,7 +377,6 @@ impl Plugin for CurlingPlugin {
                     systems::update_thrower_info,
                     systems::update_hammer_icons,
                     systems::update_curl_buttons_visibility,
-                    systems::disable_reflection_shadows,
                 )
                     .run_if(in_state(app_state::AppState::OnlineGame)),
             )

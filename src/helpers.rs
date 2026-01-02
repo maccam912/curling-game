@@ -7,9 +7,10 @@
 
 use bevy::math::primitives::{Cuboid, Cylinder};
 use bevy::prelude::*;
+use bevy::render::view::RenderLayers;
 use bevy_rapier2d::prelude::*;
 
-use crate::components::{CurlDirection, ReflectionVisual, Stone, Team, ThrowingStone};
+use crate::components::{CurlDirection, Stone, Team, ThrowingStone};
 use crate::constants::*;
 use crate::resources::{ShotSnapshot, StoneAssets, StoneSnapshot};
 
@@ -189,34 +190,15 @@ pub fn spawn_stone(
     let model_transform = Transform::from_translation(Vec3::new(0.0, 0.0, MODEL_Z_OFFSET))
         .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2))
         .with_scale(Vec3::splat(MODEL_SCALE));
-    // Reflected copy of the scene for the faux-reflection under the ice
-    let reflection_scene = match team {
-        Team::One => assets.red_scene.clone(),
-        Team::Two => assets.yellow_scene.clone(),
-    };
-    // Reflection transform relative to parent visual: mirror through ice surface
-    // Parent has 90° X rotation, so local Y = world Z. Negative Y moves down.
-    let reflection_transform =
-        Transform::from_translation(Vec3::new(0.0, -2.0 * MODEL_Z_OFFSET / MODEL_SCALE, 0.0))
-            .with_scale(Vec3::new(1.0, -1.0, 1.0));
 
     commands.entity(stone_entity).with_children(|parent| {
-        // GLB model (main stone above ice) with reflection as child
-        parent
-            .spawn((
-                crate::components::StoneVisual,
-                SceneRoot(scene),
-                model_transform,
-            ))
-            .with_children(|visual| {
-                // Reflected GLB model (child of visual so it rotates together)
-                // ReflectionVisual marker used to disable shadow casting
-                visual.spawn((
-                    ReflectionVisual,
-                    SceneRoot(reflection_scene),
-                    reflection_transform,
-                ));
-            });
+        // GLB model (main stone above ice)
+        parent.spawn((
+            crate::components::StoneVisual,
+            SceneRoot(scene),
+            model_transform,
+            RenderLayers::from_layers(&[0, STONE_LAYER]),
+        ));
 
         // Debug cylinder showing physics collider bounds
         #[cfg(feature = "debug_mode")]
