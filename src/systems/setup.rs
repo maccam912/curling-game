@@ -13,7 +13,9 @@ use tracing::{debug, info};
 use crate::components::*;
 use crate::constants::*;
 use crate::helpers::*;
+// use crate::ice_material::IceMaterial;
 use crate::resources::{GameState, PlayerPersonalities, PlayerPersonality, StoneAssets};
+// use crate::systems::reflection::ReflectionTexture; // Removed
 
 /// Randomizes which team throws first at game start.
 ///
@@ -130,6 +132,7 @@ pub fn setup_scene(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    // mut ice_materials: ResMut<Assets<IceMaterial>>, // Unused
     mut images: ResMut<Assets<Image>>,
     asset_server: Res<AssetServer>,
 ) {
@@ -304,10 +307,12 @@ pub fn setup_scene(
     for py in 0..texture_size {
         for px in 0..texture_size {
             // Sample neighboring heights for gradient (with wrapping)
-            let left = heightmap[((py * texture_size + (px + texture_size - 1) % texture_size)) as usize];
-            let right = heightmap[((py * texture_size + (px + 1) % texture_size)) as usize];
-            let up = heightmap[(((py + texture_size - 1) % texture_size * texture_size + px)) as usize];
-            let down = heightmap[(((py + 1) % texture_size * texture_size + px)) as usize];
+            let left =
+                heightmap[(py * texture_size + (px + texture_size - 1) % texture_size) as usize];
+            let right = heightmap[(py * texture_size + (px + 1) % texture_size) as usize];
+            let up =
+                heightmap[((py + texture_size - 1) % texture_size * texture_size + px) as usize];
+            let down = heightmap[((py + 1) % texture_size * texture_size + px) as usize];
 
             // Gradient (derivative of height)
             let dx = (right - left) * bump_strength;
@@ -339,14 +344,13 @@ pub fn setup_scene(
         bevy::render::render_resource::TextureFormat::Rgba8Unorm,
         bevy::asset::RenderAssetUsages::MAIN_WORLD | bevy::asset::RenderAssetUsages::RENDER_WORLD,
     );
-    normal_image.sampler = bevy::image::ImageSampler::Descriptor(
-        bevy::image::ImageSamplerDescriptor {
+    normal_image.sampler =
+        bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
             address_mode_u: bevy::image::ImageAddressMode::Repeat,
             address_mode_v: bevy::image::ImageAddressMode::Repeat,
             ..default()
-        }
-    );
-    let normal_texture = images.add(normal_image);
+        });
+    let _normal_texture = images.add(normal_image);
 
     // Generate depth map from heightmap for parallax effect
     // White = bottom (low), Black = top (high) - inverted from heightmap
@@ -371,30 +375,23 @@ pub fn setup_scene(
         bevy::asset::RenderAssetUsages::MAIN_WORLD | bevy::asset::RenderAssetUsages::RENDER_WORLD,
     );
     // Use Nearest filtering for depth map (better performance per Bevy docs)
-    depth_image.sampler = bevy::image::ImageSampler::Descriptor(
-        bevy::image::ImageSamplerDescriptor {
+    depth_image.sampler =
+        bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
             address_mode_u: bevy::image::ImageAddressMode::Repeat,
             address_mode_v: bevy::image::ImageAddressMode::Repeat,
             mag_filter: bevy::image::ImageFilterMode::Nearest,
             min_filter: bevy::image::ImageFilterMode::Nearest,
             ..default()
-        }
-    );
-    let depth_texture = images.add(depth_image);
-
+        });
+    // Use StandardMaterial with generated normal map for pebbling
+    // This avoids WGPU validation errors with custom shaders and provides
+    // physically based rendering for the ice surface.
     let sheet_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.92, 0.95, 0.98, 0.15), // More transparent to show paint
-        normal_map_texture: Some(normal_texture),
-        flip_normal_map_y: true,
-        depth_map: Some(depth_texture),
-        parallax_depth_scale: 0.02, // Subtle depth effect
-        max_parallax_layer_count: 8.0,
-        perceptual_roughness: 0.05, // Very smooth for sharp specular reflections
-        metallic: 0.0,
-        reflectance: 0.7, // High reflectance for ice
-        ior: 1.31,        // Ice refraction index
+        base_color: Color::srgba(0.92, 0.95, 0.98, 0.8),
+        normal_map_texture: Some(_normal_texture.clone()),
+        perceptual_roughness: 0.2, // Smooth but pebbled
+        reflectance: 0.1,          // Ice is not very metallic/reflective in this lighting
         alpha_mode: bevy::render::alpha::AlphaMode::Blend,
-        uv_transform: bevy::math::Affine2::from_scale(Vec2::new(4.0, 20.0)), // Less tiling with larger texture
         ..default()
     });
     commands.spawn((
@@ -405,7 +402,7 @@ pub fn setup_scene(
     debug!(
         width = SHEET_WIDTH,
         length = SHEET_LENGTH,
-        "Created ice sheet"
+        "Created ice sheet with StandardMaterial and normal map"
     );
 
     // Line Materials (lit so they receive shadows)

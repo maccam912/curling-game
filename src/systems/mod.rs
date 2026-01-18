@@ -15,6 +15,7 @@
 //! - `online_game`: Online game synchronization
 //! - `ai`: AI opponent for single-player mode
 //! - `prediction`: Ghost stone trajectory prediction
+//! - `reflection`: Planar reflection camera for ice
 
 pub mod ai;
 pub mod camera;
@@ -25,6 +26,7 @@ pub mod online;
 pub mod online_game;
 pub mod physics;
 pub mod prediction;
+// pub mod reflection; // Removed
 pub mod setup;
 pub mod ui;
 pub mod viewport;
@@ -39,6 +41,7 @@ pub use online::*;
 pub use online_game::*;
 pub use physics::*;
 pub use prediction::*;
+// pub use reflection::*; // Removed
 pub use setup::*;
 pub use ui::*;
 pub use viewport::*;

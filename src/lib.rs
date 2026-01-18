@@ -37,6 +37,7 @@ pub mod app_state;
 pub mod components;
 pub mod constants;
 pub mod helpers;
+// pub mod ice_material; // Removed
 pub mod network;
 pub mod resources;
 pub mod rules;
@@ -48,6 +49,7 @@ pub use ai_strategy::*;
 pub use app_state::*;
 pub use components::*;
 pub use constants::*;
+// pub use ice_material::*; // Removed
 pub use network::*;
 pub use resources::*;
 pub use rules::*;
@@ -95,6 +97,8 @@ impl Plugin for CurlingPlugin {
             .init_state::<app_state::NetworkRole>()
             // Physics plugin
             .add_plugins(RapierPhysicsPlugin::<NoUserData>::default())
+            // Ice material with pebbling shader
+            // .add_plugins(MaterialPlugin::<ice_material::IceMaterial>::default())
             // Lighting
             .insert_resource(AmbientLight {
                 color: Color::WHITE,
@@ -165,7 +169,14 @@ impl Plugin for CurlingPlugin {
             .add_systems(
                 OnEnter(app_state::AppState::PassAndPlay),
                 (
+                    // systems::setup_reflection_camera, // Removed
                     systems::setup_scene,
+                )
+                    .chain(),
+            )
+            .add_systems(
+                OnEnter(app_state::AppState::PassAndPlay),
+                (
                     systems::configure_rapier,
                     systems::setup_ui,
                     systems::randomize_first_team,
@@ -215,6 +226,7 @@ impl Plugin for CurlingPlugin {
                     systems::update_hammer_icons,
                     systems::update_curl_buttons_visibility,
                     systems::disable_reflection_shadows,
+                    // systems::sync_reflection_camera, // Removed reflection module
                 )
                     .run_if(in_state(app_state::AppState::PassAndPlay)),
             )
@@ -223,8 +235,12 @@ impl Plugin for CurlingPlugin {
             // ================================================================
             .add_systems(
                 OnEnter(app_state::AppState::VsAI),
+                // (systems::setup_reflection_camera, systems::setup_scene).chain(),
+                systems::setup_scene,
+            )
+            .add_systems(
+                OnEnter(app_state::AppState::VsAI),
                 (
-                    systems::setup_scene,
                     systems::configure_rapier,
                     systems::setup_ui,
                     systems::randomize_first_team,
@@ -284,6 +300,7 @@ impl Plugin for CurlingPlugin {
                     systems::update_hammer_icons,
                     systems::update_curl_buttons_visibility,
                     systems::disable_reflection_shadows,
+                    // systems::sync_reflection_camera, // Removed
                 )
                     .run_if(in_state(app_state::AppState::VsAI)),
             )
@@ -292,8 +309,12 @@ impl Plugin for CurlingPlugin {
             // ================================================================
             .add_systems(
                 OnEnter(app_state::AppState::OnlineGame),
+                // (systems::setup_reflection_camera, systems::setup_scene).chain(),
+                systems::setup_scene,
+            )
+            .add_systems(
+                OnEnter(app_state::AppState::OnlineGame),
                 (
-                    systems::setup_scene,
                     systems::configure_rapier,
                     systems::setup_ui,
                     systems::setup_online_game,
@@ -375,6 +396,7 @@ impl Plugin for CurlingPlugin {
                     systems::update_hammer_icons,
                     systems::update_curl_buttons_visibility,
                     systems::disable_reflection_shadows,
+                    // systems::sync_reflection_camera, // Removed
                 )
                     .run_if(in_state(app_state::AppState::OnlineGame)),
             )
