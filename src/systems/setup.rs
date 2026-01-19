@@ -148,12 +148,15 @@ pub fn setup_scene(
     ));
     debug!(position = ?skip_view_pos, "Spawned main camera");
 
-    // Main directional light (overhead, for primary shadows)
+    // Main overhead spotlight (for primary shadows)
     // Positioned centrally above the house for even shadow casting
     commands.spawn((
-        DirectionalLight {
-            illuminance: 6000.0,
+        SpotLight {
+            intensity: 2_000_000.0, // Bright main overhead light
+            range: 50.0,
             shadows_enabled: true,
+            outer_angle: std::f32::consts::FRAC_PI_2, // 90 degrees - wide coverage
+            inner_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
             ..default()
         },
         Transform::from_xyz(0.0, TEE_FROM_CENTER, 30.0)
@@ -174,13 +177,16 @@ pub fn setup_scene(
             let y_pos = start_y + (i as f32) * light_spacing;
             let pos = Vec3::new(side * side_light_x, y_pos, side_light_height);
             commands.spawn((
-                PointLight {
-                    intensity: 600_000.0, // Lumens - fluorescent fixture brightness
+                SpotLight {
+                    intensity: 800_000.0, // Lumens - overhead fixture brightness
                     range: 25.0,
-                    shadows_enabled: false,
+                    shadows_enabled: true,
+                    outer_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
+                    inner_angle: std::f32::consts::FRAC_PI_4, // 45 degrees
                     ..default()
                 },
-                Transform::from_translation(pos),
+                // Point the spotlight downward
+                Transform::from_translation(pos).looking_at(Vec3::new(0.0, y_pos, 0.0), Vec3::Y),
                 GameSceneElement,
             ));
         }
@@ -210,25 +216,32 @@ pub fn setup_scene(
             house_y + y_offset,
             corner_light_height,
         );
+        // Point toward the house center
+        let target = Vec3::new(0.0, house_y, 0.0);
         commands.spawn((
-            PointLight {
-                intensity: 500_000.0,
+            SpotLight {
+                intensity: 600_000.0,
                 range: 30.0,
-                shadows_enabled: false,
+                shadows_enabled: true,
+                outer_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
+                inner_angle: std::f32::consts::FRAC_PI_4, // 45 degrees
                 ..default()
             },
-            Transform::from_translation(pos),
+            Transform::from_translation(pos).looking_at(target, Vec3::Z),
             GameSceneElement,
         ));
     }
-    debug!("Spawned 4 corner fill lights around house");
+    debug!("Spawned 4 corner spotlight fixtures around house");
 
-    // Mirrored light (below ice for reflections, no shadows)
+    // Mirrored spotlight (below ice for reflections, no shadows)
     // Shines upward to match the flipped normals from the negative Y scale
     commands.spawn((
-        DirectionalLight {
-            illuminance: 5000.0,
+        SpotLight {
+            intensity: 1_500_000.0,
+            range: 50.0,
             shadows_enabled: false,
+            outer_angle: std::f32::consts::FRAC_PI_2, // 90 degrees
+            inner_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
             ..default()
         },
         Transform::from_xyz(0.0, TEE_FROM_CENTER, -30.0)
