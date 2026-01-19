@@ -249,6 +249,11 @@
 
         async function run() {
             try {
+                // Check for WebGPU support before loading
+                if (!navigator.gpu) {
+                    throw new Error('WebGPU is not supported in this browser. Please use Chrome 113+, Edge 113+, or enable WebGPU flags in your browser.');
+                }
+
                 await init();
                 const canvas = await waitForCanvas();
                 scaleCanvas(canvas);
