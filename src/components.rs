@@ -356,6 +356,11 @@ pub struct Broom;
 #[derive(Component)]
 pub struct MainCamera;
 
+/// Marker component for any entity that is part of the 3D game scene
+/// (lights, ice, meshes, camera, etc.) that should be cleaned up on exit.
+#[derive(Component)]
+pub struct GameSceneElement;
+
 // ============================================================================
 // UI COMPONENTS
 // ============================================================================
@@ -503,6 +508,10 @@ pub struct GameOverScoreBreakdown;
 /// Marker for the game over winner text.
 #[derive(Component)]
 pub struct GameOverWinnerText;
+
+/// Marker for the "Return to Menu" button on game over screen.
+#[derive(Component)]
+pub struct ReturnToMenuButton;
 
 // ============================================================================
 // RESPONSIVE UI COMPONENTS

@@ -9,6 +9,7 @@ use bevy::ecs::system::SystemParam;
 use bevy::prelude::*;
 use tracing::trace;
 
+use crate::app_state::AppState;
 use crate::components::*;
 use crate::constants::*;
 use crate::resources::*;
@@ -688,6 +689,29 @@ pub fn update_game_over_panel(
             ));
 
             **text = breakdown;
+        }
+    }
+}
+
+/// Handles interactions with the Game Over "Return to Menu" button.
+pub fn handle_game_over_buttons(
+    mut next_state: ResMut<NextState<AppState>>,
+    mut button_query: Query<
+        (&Interaction, &mut BackgroundColor),
+        (Changed<Interaction>, With<ReturnToMenuButton>),
+    >,
+) {
+    for (interaction, mut bg_color) in button_query.iter_mut() {
+        match *interaction {
+            Interaction::Pressed => {
+                next_state.set(AppState::MainMenu);
+            }
+            Interaction::Hovered => {
+                bg_color.0 = Color::srgba(0.4, 0.5, 0.8, 0.9);
+            }
+            Interaction::None => {
+                bg_color.0 = Color::srgba(0.3, 0.4, 0.7, 0.9);
+            }
         }
     }
 }

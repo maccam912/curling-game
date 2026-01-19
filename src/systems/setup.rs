@@ -142,9 +142,10 @@ pub fn setup_scene(
     let skip_view_pos = Vec3::new(0.0, TEE_FROM_CENTER + BACK_FROM_TEE + 2.0, 1.7);
     let skip_view_look = Vec3::new(0.0, TEE_FROM_CENTER, 0.0);
     commands.spawn((
-        Camera3d::default(),
         MainCamera,
+        Camera3d::default(),
         Transform::from_translation(skip_view_pos).looking_at(skip_view_look, Vec3::Z),
+        GameSceneElement,
     ));
     debug!(position = ?skip_view_pos, "Spawned main camera");
 
@@ -158,6 +159,7 @@ pub fn setup_scene(
         },
         Transform::from_xyz(0.0, TEE_FROM_CENTER, 30.0)
             .looking_at(Vec3::new(0.0, TEE_FROM_CENTER, 0.0), Vec3::Y),
+        GameSceneElement,
     ));
 
     // Linear arrays of lights along both sides of the sheet
@@ -180,6 +182,7 @@ pub fn setup_scene(
                     ..default()
                 },
                 Transform::from_translation(pos),
+                GameSceneElement,
             ));
         }
         debug!(
@@ -216,6 +219,7 @@ pub fn setup_scene(
                 ..default()
             },
             Transform::from_translation(pos),
+            GameSceneElement,
         ));
     }
     debug!("Spawned 4 corner fill lights around house");
@@ -230,14 +234,18 @@ pub fn setup_scene(
         },
         Transform::from_xyz(0.0, TEE_FROM_CENTER, -30.0)
             .looking_at(Vec3::new(0.0, TEE_FROM_CENTER, 0.0), Vec3::Y),
+        GameSceneElement,
     ));
 
     // Ambient light for base illumination
-    commands.spawn(AmbientLight {
-        color: Color::WHITE,
-        brightness: 400.0,
-        ..default()
-    });
+    commands.spawn((
+        AmbientLight {
+            color: Color::WHITE,
+            brightness: 400.0,
+            ..default()
+        },
+        GameSceneElement,
+    ));
 
     // Ice Sheet with pebbling texture
     // Must generate tangents for normal maps to work!
@@ -398,6 +406,7 @@ pub fn setup_scene(
         Mesh3d(sheet_mesh),
         MeshMaterial3d(sheet_material),
         Transform::from_translation(Vec3::new(0.0, 0.0, -SHEET_THICKNESS * 0.5)),
+        GameSceneElement,
     ));
     debug!(
         width = SHEET_WIDTH,
@@ -504,6 +513,7 @@ pub fn setup_scene(
         Mesh3d(base_mesh),
         MeshMaterial3d(base_white),
         Transform::from_translation(Vec3::new(0.0, 0.0, -0.008)), // Deepest layer
+        GameSceneElement,
     ));
 
     // House Materials (lit so they receive shadows)
@@ -597,6 +607,7 @@ pub fn setup_scene(
         MeshMaterial3d(broom_material),
         Transform::from_xyz(0.0, TEE_FROM_CENTER, 0.05)
             .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+        GameSceneElement,
     ));
     debug!("Created broom indicator");
 
@@ -615,6 +626,7 @@ pub fn setup_scene(
         Transform::from_xyz(0.0, TEE_FROM_CENTER, 0.15)
             .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
         Visibility::Hidden, // Start hidden until prediction is running
+        GameSceneElement,
     ));
     debug!("Created ghost stone prediction indicator");
 
@@ -1251,6 +1263,33 @@ pub fn setup_ui(mut commands: Commands) {
                 },
                 TextColor(Color::WHITE),
             ));
+
+            // Return to Menu button
+            panel
+                .spawn((
+                    ReturnToMenuButton,
+                    Button,
+                    Node {
+                        width: Val::Px(200.0),
+                        height: Val::Px(50.0),
+                        justify_content: JustifyContent::Center,
+                        align_items: AlignItems::Center,
+                        margin: UiRect::top(Val::Px(20.0)),
+                        ..default()
+                    },
+                    BackgroundColor(Color::srgba(0.3, 0.4, 0.7, 0.9)),
+                    BorderRadius::all(Val::Px(10.0)),
+                ))
+                .with_children(|btn| {
+                    btn.spawn((
+                        Text::new("Main Menu"),
+                        TextFont {
+                            font_size: 20.0,
+                            ..default()
+                        },
+                        TextColor(Color::WHITE),
+                    ));
+                });
         });
 
     debug!("UI setup complete");
@@ -1280,5 +1319,25 @@ pub fn disable_reflection_shadows(
                 to_visit.extend(children.iter());
             }
         }
+    }
+}
+
+/// Cleans up the game scene (3D entities) when entering MainMenu.
+pub fn cleanup_game_scene(mut commands: Commands, query: Query<Entity, With<GameSceneElement>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+    if !query.is_empty() {
+        tracing::info!("Game scene cleaned up ({} entities)", query.iter().count());
+    }
+}
+
+/// Cleans up the game UI when entering MainMenu.
+pub fn cleanup_game_ui(mut commands: Commands, query: Query<Entity, With<UiRoot>>) {
+    for entity in query.iter() {
+        commands.entity(entity).despawn();
+    }
+    if !query.is_empty() {
+        tracing::info!("Game UI cleaned up ({} entities)", query.iter().count());
     }
 }

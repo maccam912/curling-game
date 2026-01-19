@@ -170,6 +170,7 @@ pub fn spawn_stone(
             Restitution::coefficient(0.8),
             Transform::from_translation(Vec3::new(position.x, position.y, 0.0)),
             GlobalTransform::default(),
+            crate::components::GameSceneElement,
         ))
         .id();
 
@@ -285,6 +286,7 @@ pub fn spawn_line(
         Mesh3d(mesh),
         MeshMaterial3d(material),
         Transform::from_translation(Vec3::new(center.x, center.y, z_pos)),
+        crate::components::GameSceneElement,
     ));
 }
 
@@ -311,6 +313,7 @@ pub fn spawn_house_ring(
         MeshMaterial3d(material),
         Transform::from_xyz(0.0, y_pos, z_pos)
             .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
+        crate::components::GameSceneElement,
     ));
 }
 

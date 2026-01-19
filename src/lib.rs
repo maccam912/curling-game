@@ -114,11 +114,24 @@ impl Plugin for CurlingPlugin {
             .insert_resource(viewport::ViewportConfig::default())
             .insert_resource(Time::<Fixed>::from_hz(60.0))
             // ================================================================
+            // SPLASH SCREEN
+            // ================================================================
+            .add_systems(OnEnter(app_state::AppState::Splash), systems::setup_splash)
+            .add_systems(
+                Update,
+                systems::update_splash_timer.run_if(in_state(app_state::AppState::Splash)),
+            )
+            .add_systems(OnExit(app_state::AppState::Splash), systems::cleanup_splash)
+            // ================================================================
             // MAIN MENU STATE
             // ================================================================
             .add_systems(
                 OnEnter(app_state::AppState::MainMenu),
-                systems::setup_main_menu,
+                (
+                    systems::setup_main_menu,
+                    systems::cleanup_game_scene,
+                    systems::cleanup_game_ui,
+                ),
             )
             .add_systems(
                 Update,
@@ -127,6 +140,47 @@ impl Plugin for CurlingPlugin {
             .add_systems(
                 OnExit(app_state::AppState::MainMenu),
                 systems::cleanup_main_menu,
+            )
+            // ================================================================
+            // SETTINGS MENU STATE
+            // ================================================================
+            .add_systems(
+                OnEnter(app_state::AppState::Settings),
+                systems::setup_settings_menu,
+            )
+            .add_systems(
+                Update,
+                systems::handle_settings_buttons.run_if(in_state(app_state::AppState::Settings)),
+            )
+            .add_systems(
+                OnExit(app_state::AppState::Settings),
+                systems::cleanup_settings_menu,
+            )
+            // ================================================================
+            // PAUSE STATE
+            // ================================================================
+            .insert_resource(systems::pause::PreviousGameState::default())
+            .add_systems(
+                OnEnter(app_state::AppState::Paused),
+                systems::setup_pause_menu,
+            )
+            .add_systems(
+                Update,
+                (systems::handle_pause_buttons, systems::toggle_pause)
+                    .run_if(in_state(app_state::AppState::Paused)),
+            )
+            .add_systems(
+                OnExit(app_state::AppState::Paused),
+                systems::cleanup_pause_menu,
+            )
+            // Common pause toggle for game states
+            .add_systems(
+                Update,
+                systems::toggle_pause.run_if(
+                    in_state(app_state::AppState::PassAndPlay)
+                        .or(in_state(app_state::AppState::VsAI))
+                        .or(in_state(app_state::AppState::OnlineGame)),
+                ),
             )
             // ================================================================
             // ONLINE MENU STATE

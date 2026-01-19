@@ -30,6 +30,14 @@ pub struct OnlineMultiplayerButton;
 #[derive(Component)]
 pub struct VsAIButton;
 
+/// Marker for the "Settings" button.
+#[derive(Component)]
+pub struct SettingsButton;
+
+/// Marker for the "Quit" button.
+#[derive(Component)]
+pub struct QuitButton;
+
 // ============================================================================
 // SYSTEMS
 // ============================================================================
@@ -108,6 +116,25 @@ pub fn setup_main_menu(mut commands: Commands) {
                 OnlineMultiplayerButton,
                 Color::srgb(0.3, 0.4, 0.7),
             );
+
+            // Settings button
+            spawn_menu_button(
+                parent,
+                "Settings",
+                "Adjust game options",
+                SettingsButton,
+                Color::srgb(0.5, 0.5, 0.5),
+            );
+
+            // Quit button
+            #[cfg(not(target_arch = "wasm32"))]
+            spawn_menu_button(
+                parent,
+                "Quit",
+                "Exit the game",
+                QuitButton,
+                Color::srgb(0.7, 0.2, 0.2),
+            );
         });
 }
 
@@ -165,9 +192,12 @@ fn spawn_menu_button<T: Component>(
 /// Handles button interactions on the main menu.
 pub fn handle_menu_buttons(
     mut next_state: ResMut<NextState<AppState>>,
+    mut app_exit_events: MessageWriter<AppExit>,
     pass_play_query: Query<&Interaction, (Changed<Interaction>, With<PassAndPlayButton>)>,
     vs_ai_query: Query<&Interaction, (Changed<Interaction>, With<VsAIButton>)>,
     online_query: Query<&Interaction, (Changed<Interaction>, With<OnlineMultiplayerButton>)>,
+    settings_query: Query<&Interaction, (Changed<Interaction>, With<SettingsButton>)>,
+    quit_query: Query<&Interaction, (Changed<Interaction>, With<QuitButton>)>,
     mut button_colors: Query<
         (&Interaction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
@@ -194,6 +224,22 @@ pub fn handle_menu_buttons(
         if *interaction == Interaction::Pressed {
             tracing::info!("Online Multiplayer selected");
             next_state.set(AppState::OnlineMenu);
+        }
+    }
+
+    // Handle Settings button
+    for interaction in settings_query.iter() {
+        if *interaction == Interaction::Pressed {
+            tracing::info!("Settings selected");
+            next_state.set(AppState::Settings);
+        }
+    }
+
+    // Handle Quit button
+    for interaction in quit_query.iter() {
+        if *interaction == Interaction::Pressed {
+            tracing::info!("Quit selected");
+            app_exit_events.write(AppExit::Success);
         }
     }
 

@@ -14,9 +14,15 @@ use bevy::prelude::*;
 /// Main application states for navigation between game modes.
 #[derive(States, Default, Clone, Eq, PartialEq, Debug, Hash)]
 pub enum AppState {
-    /// Main menu with game mode selection.
+    /// Splash screen with logo/title.
     #[default]
+    Splash,
+    /// Main menu with game mode selection.
     MainMenu,
+    /// Settings menu.
+    Settings,
+    /// Game is paused.
+    Paused,
     /// Local pass-and-play mode (hot-seat multiplayer).
     PassAndPlay,
     /// Single player vs AI mode.

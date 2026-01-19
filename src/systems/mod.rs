@@ -24,10 +24,13 @@ pub mod input;
 pub mod menu;
 pub mod online;
 pub mod online_game;
+pub mod pause;
 pub mod physics;
 pub mod prediction;
 // pub mod reflection; // Removed
+pub mod settings;
 pub mod setup;
+pub mod splash;
 pub mod ui;
 pub mod viewport;
 
@@ -39,9 +42,12 @@ pub use input::*;
 pub use menu::*;
 pub use online::*;
 pub use online_game::*;
+pub use pause::*;
 pub use physics::*;
 pub use prediction::*;
 // pub use reflection::*; // Removed
+pub use settings::*;
 pub use setup::*;
+pub use splash::*;
 pub use ui::*;
 pub use viewport::*;
