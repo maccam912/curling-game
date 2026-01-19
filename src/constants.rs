@@ -282,3 +282,34 @@ pub const SIDE_SHEET_GAME_SPEED: f32 = 2.0;
 /// AI think time for side sheet games (faster than main game).
 pub const SIDE_SHEET_AI_THINK_MIN: f32 = 0.5;
 pub const SIDE_SHEET_AI_THINK_MAX: f32 = 1.0;
+
+// ============================================================================
+// ARENA ENVIRONMENT CONSTANTS
+// ============================================================================
+
+/// Total width of the arena (extends beyond outermost side sheets).
+/// With 2 side sheets per side at SHEET_WIDTH spacing, we need room for 5 sheets total
+/// plus some extra margin for walkways.
+pub const ARENA_WIDTH: f32 = SHEET_WIDTH * 7.0;
+
+/// Total length of the arena (extends beyond hack areas).
+/// Sheet length plus room for player benches and spectator areas at ends.
+pub const ARENA_LENGTH: f32 = SHEET_LENGTH + 12.0;
+
+/// Height of the arena walls.
+pub const ARENA_WALL_HEIGHT: f32 = 10.0;
+
+/// Height of the ceiling above the ice.
+pub const ARENA_CEILING_HEIGHT: f32 = 12.0;
+
+/// Width of player benches behind the hacks.
+pub const BENCH_WIDTH: f32 = 2.5;
+
+/// Depth of player benches.
+pub const BENCH_DEPTH: f32 = 0.6;
+
+/// Height of player benches.
+pub const BENCH_HEIGHT: f32 = 0.5;
+
+/// Distance from back line to bench position.
+pub const BENCH_OFFSET_FROM_BACK: f32 = 3.0;

@@ -494,6 +494,108 @@ pub fn setup_scene(
     ));
     debug!("Created ghost stone prediction indicator");
 
+    // =========================================================================
+    // ARENA ENVIRONMENT
+    // =========================================================================
+    // Add floor, walls, benches, and ceiling to create a curling club atmosphere
+
+    // Arena floor - dark rubber/concrete surface surrounding the ice
+    let floor_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.15, 0.15, 0.18), // Dark gray with slight blue tint
+        perceptual_roughness: 0.9,
+        ..default()
+    });
+    let floor_mesh = meshes.add(Cuboid::new(ARENA_WIDTH, ARENA_LENGTH, 0.1));
+    commands.spawn((
+        Mesh3d(floor_mesh),
+        MeshMaterial3d(floor_material),
+        Transform::from_xyz(0.0, 0.0, -0.15), // Just below ice sheets
+        GameSceneElement,
+    ));
+    debug!("Created arena floor");
+
+    // Arena walls material - dark with subtle texture feel
+    let wall_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.12, 0.12, 0.14), // Very dark gray
+        perceptual_roughness: 0.8,
+        ..default()
+    });
+
+    // Back wall (far end - behind the skip)
+    let back_wall_mesh = meshes.add(Cuboid::new(ARENA_WIDTH, 0.3, ARENA_WALL_HEIGHT));
+    commands.spawn((
+        Mesh3d(back_wall_mesh.clone()),
+        MeshMaterial3d(wall_material.clone()),
+        Transform::from_xyz(0.0, ARENA_LENGTH / 2.0, ARENA_WALL_HEIGHT / 2.0),
+        GameSceneElement,
+    ));
+
+    // Front wall (delivery end)
+    commands.spawn((
+        Mesh3d(back_wall_mesh),
+        MeshMaterial3d(wall_material.clone()),
+        Transform::from_xyz(0.0, -ARENA_LENGTH / 2.0, ARENA_WALL_HEIGHT / 2.0),
+        GameSceneElement,
+    ));
+
+    // Side walls
+    let side_wall_mesh = meshes.add(Cuboid::new(0.3, ARENA_LENGTH, ARENA_WALL_HEIGHT));
+    commands.spawn((
+        Mesh3d(side_wall_mesh.clone()),
+        MeshMaterial3d(wall_material.clone()),
+        Transform::from_xyz(-ARENA_WIDTH / 2.0, 0.0, ARENA_WALL_HEIGHT / 2.0),
+        GameSceneElement,
+    ));
+    commands.spawn((
+        Mesh3d(side_wall_mesh),
+        MeshMaterial3d(wall_material.clone()),
+        Transform::from_xyz(ARENA_WIDTH / 2.0, 0.0, ARENA_WALL_HEIGHT / 2.0),
+        GameSceneElement,
+    ));
+    debug!("Created arena walls");
+
+    // Ceiling - dark to absorb light and contain the space
+    let ceiling_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.08, 0.08, 0.1), // Very dark
+        perceptual_roughness: 1.0,
+        ..default()
+    });
+    let ceiling_mesh = meshes.add(Cuboid::new(ARENA_WIDTH, ARENA_LENGTH, 0.2));
+    commands.spawn((
+        Mesh3d(ceiling_mesh),
+        MeshMaterial3d(ceiling_material),
+        Transform::from_xyz(0.0, 0.0, ARENA_CEILING_HEIGHT),
+        GameSceneElement,
+    ));
+    debug!("Created arena ceiling");
+
+    // Player benches behind each hack
+    let bench_material = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.3, 0.2, 0.15), // Wood-like brown
+        perceptual_roughness: 0.7,
+        ..default()
+    });
+    let bench_mesh = meshes.add(Cuboid::new(BENCH_WIDTH, BENCH_DEPTH, BENCH_HEIGHT));
+
+    // Far end bench (behind far hack, where skip stands)
+    let far_bench_y = back_line_far() + HACK_FROM_BACK + BENCH_OFFSET_FROM_BACK;
+    commands.spawn((
+        Mesh3d(bench_mesh.clone()),
+        MeshMaterial3d(bench_material.clone()),
+        Transform::from_xyz(0.0, far_bench_y, BENCH_HEIGHT / 2.0),
+        GameSceneElement,
+    ));
+
+    // Near end bench (behind near hack, delivery end)
+    let near_bench_y = back_line_near() - HACK_FROM_BACK - BENCH_OFFSET_FROM_BACK;
+    commands.spawn((
+        Mesh3d(bench_mesh),
+        MeshMaterial3d(bench_material),
+        Transform::from_xyz(0.0, near_bench_y, BENCH_HEIGHT / 2.0),
+        GameSceneElement,
+    ));
+    debug!("Created player benches");
+
     info!("Game scene setup complete");
 }
 
