@@ -148,16 +148,42 @@ pub fn setup_scene(
     ));
     debug!(position = ?skip_view_pos, "Spawned main camera");
 
-    // Main directional light (overhead, for primary shadows)
-    // Positioned centrally above the house for even shadow casting
+    // Main spotlights (overhead, for primary shadows)
+    // Using SpotLights instead of DirectionalLight for better WebGL2 shadow support.
+    // Two wide-angle spots cover both houses where most action happens.
+    let spotlight_height = 25.0;
+    let spotlight_outer_angle = 1.0; // ~57 degrees - wide coverage
+    let spotlight_inner_angle = 0.8; // Gradual falloff
+
+    // Spotlight over far house (skip end)
     commands.spawn((
-        DirectionalLight {
-            illuminance: 6000.0,
+        SpotLight {
+            intensity: 8_000_000.0,
+            color: Color::WHITE,
             shadows_enabled: true,
+            range: 60.0,
+            outer_angle: spotlight_outer_angle,
+            inner_angle: spotlight_inner_angle,
             ..default()
         },
-        Transform::from_xyz(0.0, TEE_FROM_CENTER, 30.0)
+        Transform::from_xyz(0.0, TEE_FROM_CENTER, spotlight_height)
             .looking_at(Vec3::new(0.0, TEE_FROM_CENTER, 0.0), Vec3::Y),
+        GameSceneElement,
+    ));
+
+    // Spotlight over near house (delivery end)
+    commands.spawn((
+        SpotLight {
+            intensity: 8_000_000.0,
+            color: Color::WHITE,
+            shadows_enabled: true,
+            range: 60.0,
+            outer_angle: spotlight_outer_angle,
+            inner_angle: spotlight_inner_angle,
+            ..default()
+        },
+        Transform::from_xyz(0.0, -TEE_FROM_CENTER, spotlight_height)
+            .looking_at(Vec3::new(0.0, -TEE_FROM_CENTER, 0.0), Vec3::Y),
         GameSceneElement,
     ));
 
