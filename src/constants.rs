@@ -264,3 +264,21 @@ pub const COLOR_CURL_SELECTED: (f32, f32, f32, f32) = (0.3, 0.5, 0.3, 0.9);
 
 /// Curl button background when not selected.
 pub const COLOR_CURL_DESELECTED: (f32, f32, f32, f32) = (0.2, 0.2, 0.3, 0.8);
+
+// ============================================================================
+// SIDE SHEET CONSTANTS
+// ============================================================================
+
+/// Spacing between adjacent curling sheets in meters.
+/// Set to SHEET_WIDTH so sheets touch with no gaps.
+pub const SIDE_SHEET_SPACING: f32 = SHEET_WIDTH;
+
+/// Number of side sheets on each side (left and right).
+pub const SIDE_SHEETS_PER_SIDE: usize = 2;
+
+/// Speed multiplier for side sheet AI games (faster for visual interest).
+pub const SIDE_SHEET_GAME_SPEED: f32 = 2.0;
+
+/// AI think time for side sheet games (faster than main game).
+pub const SIDE_SHEET_AI_THINK_MIN: f32 = 0.5;
+pub const SIDE_SHEET_AI_THINK_MAX: f32 = 1.0;

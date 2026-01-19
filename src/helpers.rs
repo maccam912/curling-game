@@ -265,7 +265,8 @@ pub fn spawn_restored_guard(
 /// * `length` - Length of the line
 /// * `along_y` - If true, line extends along Y axis; otherwise X axis
 /// * `thickness` - Width/thickness of the line
-/// * `z_pos` - Z position (depth below ice surface, should be negative)
+/// * `z_pos` - Z position (height above ice surface)
+/// * `x_offset` - Optional X offset for side sheets (default 0.0)
 pub fn spawn_line(
     commands: &mut Commands,
     meshes: &mut ResMut<Assets<Mesh>>,
@@ -276,18 +277,41 @@ pub fn spawn_line(
     thickness: f32,
     z_pos: f32,
 ) {
+    spawn_line_at_offset(
+        commands, meshes, material, center, length, along_y, thickness, z_pos, 0.0, None,
+    );
+}
+
+/// Spawns a line on the ice sheet at a given X offset.
+///
+/// Used for both main sheet (x_offset=0) and side sheets (x_offset!=0).
+pub fn spawn_line_at_offset(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    material: Handle<StandardMaterial>,
+    center: Vec2,
+    length: f32,
+    along_y: bool,
+    thickness: f32,
+    z_pos: f32,
+    x_offset: f32,
+    side_sheet_id: Option<i32>,
+) {
     let (width, height) = if along_y {
         (thickness, length)
     } else {
         (length, thickness)
     };
     let mesh = meshes.add(Cuboid::new(width, height, LINE_HEIGHT));
-    commands.spawn((
+    let mut entity = commands.spawn((
         Mesh3d(mesh),
         MeshMaterial3d(material),
-        Transform::from_translation(Vec3::new(center.x, center.y, z_pos)),
+        Transform::from_translation(Vec3::new(center.x + x_offset, center.y, z_pos)),
         crate::components::GameSceneElement,
     ));
+    if let Some(sheet_id) = side_sheet_id {
+        entity.insert(crate::components::SideSheetElement(sheet_id));
+    }
 }
 
 /// Spawns a house ring (circular colored area).
@@ -307,14 +331,33 @@ pub fn spawn_house_ring(
     y_pos: f32,
     z_pos: f32,
 ) {
+    spawn_house_ring_at_offset(commands, meshes, material, radius, y_pos, z_pos, 0.0, None);
+}
+
+/// Spawns a house ring at a given X offset.
+///
+/// Used for both main sheet (x_offset=0) and side sheets (x_offset!=0).
+pub fn spawn_house_ring_at_offset(
+    commands: &mut Commands,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    material: Handle<StandardMaterial>,
+    radius: f32,
+    y_pos: f32,
+    z_pos: f32,
+    x_offset: f32,
+    side_sheet_id: Option<i32>,
+) {
     let ring_mesh = meshes.add(Cylinder::new(radius, 0.005));
-    commands.spawn((
+    let mut entity = commands.spawn((
         Mesh3d(ring_mesh),
         MeshMaterial3d(material),
-        Transform::from_xyz(0.0, y_pos, z_pos)
+        Transform::from_xyz(x_offset, y_pos, z_pos)
             .with_rotation(Quat::from_rotation_x(std::f32::consts::FRAC_PI_2)),
         crate::components::GameSceneElement,
     ));
+    if let Some(sheet_id) = side_sheet_id {
+        entity.insert(crate::components::SideSheetElement(sheet_id));
+    }
 }
 
 // ============================================================================

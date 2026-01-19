@@ -112,6 +112,7 @@ impl Plugin for CurlingPlugin {
             .insert_resource(resources::OnlineState::default())
             .insert_resource(resources::PredictionState::default())
             .insert_resource(viewport::ViewportConfig::default())
+            .insert_resource(resources::SideSheetGames::default())
             .insert_resource(Time::<Fixed>::from_hz(60.0))
             // ================================================================
             // SPLASH SCREEN
@@ -235,6 +236,7 @@ impl Plugin for CurlingPlugin {
                     systems::setup_ui,
                     systems::randomize_first_team,
                     systems::generate_player_personalities,
+                    systems::setup_side_sheets,
                 ),
             )
             // Physics systems run at fixed rate for consistency (FPS-independent)
@@ -281,6 +283,8 @@ impl Plugin for CurlingPlugin {
                     systems::update_curl_buttons_visibility,
                     systems::disable_reflection_shadows,
                     // systems::sync_reflection_camera, // Removed reflection module
+                    systems::update_side_sheet_games,
+                    systems::update_side_sheet_physics,
                 )
                     .run_if(in_state(app_state::AppState::PassAndPlay)),
             )
@@ -300,6 +304,7 @@ impl Plugin for CurlingPlugin {
                     systems::randomize_first_team,
                     systems::setup_ai_game,
                     systems::generate_player_personalities,
+                    systems::setup_side_sheets,
                 ),
             )
             // Physics systems for VS AI (FPS-independent)
@@ -355,6 +360,8 @@ impl Plugin for CurlingPlugin {
                     systems::update_curl_buttons_visibility,
                     systems::disable_reflection_shadows,
                     // systems::sync_reflection_camera, // Removed
+                    systems::update_side_sheet_games,
+                    systems::update_side_sheet_physics,
                 )
                     .run_if(in_state(app_state::AppState::VsAI)),
             )
@@ -375,6 +382,7 @@ impl Plugin for CurlingPlugin {
                     systems::spawn_your_team_indicator,
                     systems::spawn_connection_status_indicator,
                     systems::generate_player_personalities,
+                    systems::setup_side_sheets,
                 ),
             )
             // Physics systems for online game (FPS-independent)
@@ -451,6 +459,8 @@ impl Plugin for CurlingPlugin {
                     systems::update_curl_buttons_visibility,
                     systems::disable_reflection_shadows,
                     // systems::sync_reflection_camera, // Removed
+                    systems::update_side_sheet_games,
+                    systems::update_side_sheet_physics,
                 )
                     .run_if(in_state(app_state::AppState::OnlineGame)),
             )

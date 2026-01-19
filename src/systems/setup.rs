@@ -133,7 +133,6 @@ pub fn setup_scene(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     // mut ice_materials: ResMut<Assets<IceMaterial>>, // Unused
-    mut images: ResMut<Assets<Image>>,
     asset_server: Res<AssetServer>,
 ) {
     info!("Setting up game scene");
@@ -247,172 +246,8 @@ pub fn setup_scene(
         GameSceneElement,
     ));
 
-    // Ice Sheet with pebbling texture
-    // Must generate tangents for normal maps to work!
-    let mut sheet_mesh_data = Mesh::from(Cuboid::new(SHEET_WIDTH, SHEET_LENGTH, SHEET_THICKNESS));
-    sheet_mesh_data
-        .generate_tangents()
-        .expect("Failed to generate tangents for ice sheet");
-    let sheet_mesh = meshes.add(sheet_mesh_data);
-
-    // Generate smooth pebbling using value noise with bilinear interpolation
-    // This creates natural-looking bumps instead of harsh per-pixel noise
-    let texture_size = 256u32; // Larger texture = less visible tiling
-    let grid_size = 32u32; // Random values at grid points, interpolate between
-    let mut rng = rand::rng();
-
-    // Generate random heights at grid points (0.0 to 1.0)
-    let grid: Vec<f32> = (0..((grid_size + 1) * (grid_size + 1)))
-        .map(|_| rng.random::<f32>())
-        .collect();
-
-    // Helper to get grid value with wrapping for seamless tiling
-    let get_grid = |gx: u32, gy: u32| -> f32 {
-        let gx = gx % (grid_size + 1);
-        let gy = gy % (grid_size + 1);
-        grid[(gy * (grid_size + 1) + gx) as usize]
-    };
-
-    // Bilinear interpolation helper
-    let lerp = |a: f32, b: f32, t: f32| a + t * (b - a);
-    let smoothstep = |t: f32| t * t * (3.0 - 2.0 * t); // Smoother interpolation
-
-    // Generate heightmap with smooth interpolation
-    let mut heightmap: Vec<f32> = Vec::with_capacity((texture_size * texture_size) as usize);
-    let cell_size = texture_size as f32 / grid_size as f32;
-
-    for py in 0..texture_size {
-        for px in 0..texture_size {
-            // Find which grid cell we're in
-            let fx = px as f32 / cell_size;
-            let fy = py as f32 / cell_size;
-            let gx = fx as u32;
-            let gy = fy as u32;
-
-            // Fractional position within cell (0-1)
-            let tx = smoothstep(fx - gx as f32);
-            let ty = smoothstep(fy - gy as f32);
-
-            // Get four corner values
-            let v00 = get_grid(gx, gy);
-            let v10 = get_grid(gx + 1, gy);
-            let v01 = get_grid(gx, gy + 1);
-            let v11 = get_grid(gx + 1, gy + 1);
-
-            // Bilinear interpolation
-            let v0 = lerp(v00, v10, tx);
-            let v1 = lerp(v01, v11, tx);
-            let height = lerp(v0, v1, ty);
-
-            heightmap.push(height);
-        }
-    }
-
-    // Generate normal map from heightmap using gradient
-    let bump_strength = 0.3; // How pronounced the bumps appear
-    let mut normal_data = Vec::with_capacity((texture_size * texture_size * 4) as usize);
-
-    for py in 0..texture_size {
-        for px in 0..texture_size {
-            // Sample neighboring heights for gradient (with wrapping)
-            let left =
-                heightmap[(py * texture_size + (px + texture_size - 1) % texture_size) as usize];
-            let right = heightmap[(py * texture_size + (px + 1) % texture_size) as usize];
-            let up =
-                heightmap[((py + texture_size - 1) % texture_size * texture_size + px) as usize];
-            let down = heightmap[((py + 1) % texture_size * texture_size + px) as usize];
-
-            // Gradient (derivative of height)
-            let dx = (right - left) * bump_strength;
-            let dy = (down - up) * bump_strength;
-
-            // Convert gradient to normal (pointing mostly up)
-            // Normal = normalize(-dx, -dy, 1)
-            let len = (dx * dx + dy * dy + 1.0).sqrt();
-            let nx = -dx / len;
-            let ny = -dy / len;
-            let nz = 1.0 / len;
-
-            // Convert from [-1,1] to [0,255] range
-            normal_data.push(((nx * 0.5 + 0.5) * 255.0) as u8);
-            normal_data.push(((ny * 0.5 + 0.5) * 255.0) as u8);
-            normal_data.push(((nz * 0.5 + 0.5) * 255.0) as u8);
-            normal_data.push(255);
-        }
-    }
-
-    let mut normal_image = Image::new(
-        bevy::render::render_resource::Extent3d {
-            width: texture_size,
-            height: texture_size,
-            depth_or_array_layers: 1,
-        },
-        bevy::render::render_resource::TextureDimension::D2,
-        normal_data,
-        bevy::render::render_resource::TextureFormat::Rgba8Unorm,
-        bevy::asset::RenderAssetUsages::MAIN_WORLD | bevy::asset::RenderAssetUsages::RENDER_WORLD,
-    );
-    normal_image.sampler =
-        bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
-            address_mode_u: bevy::image::ImageAddressMode::Repeat,
-            address_mode_v: bevy::image::ImageAddressMode::Repeat,
-            ..default()
-        });
-    let _normal_texture = images.add(normal_image);
-
-    // Generate depth map from heightmap for parallax effect
-    // White = bottom (low), Black = top (high) - inverted from heightmap
-    let mut depth_data = Vec::with_capacity((texture_size * texture_size * 4) as usize);
-    for &h in &heightmap {
-        let depth = ((1.0 - h) * 255.0) as u8; // Invert: high points = dark
-        depth_data.push(depth);
-        depth_data.push(depth);
-        depth_data.push(depth);
-        depth_data.push(255);
-    }
-
-    let mut depth_image = Image::new(
-        bevy::render::render_resource::Extent3d {
-            width: texture_size,
-            height: texture_size,
-            depth_or_array_layers: 1,
-        },
-        bevy::render::render_resource::TextureDimension::D2,
-        depth_data,
-        bevy::render::render_resource::TextureFormat::Rgba8Unorm,
-        bevy::asset::RenderAssetUsages::MAIN_WORLD | bevy::asset::RenderAssetUsages::RENDER_WORLD,
-    );
-    // Use Nearest filtering for depth map (better performance per Bevy docs)
-    depth_image.sampler =
-        bevy::image::ImageSampler::Descriptor(bevy::image::ImageSamplerDescriptor {
-            address_mode_u: bevy::image::ImageAddressMode::Repeat,
-            address_mode_v: bevy::image::ImageAddressMode::Repeat,
-            mag_filter: bevy::image::ImageFilterMode::Nearest,
-            min_filter: bevy::image::ImageFilterMode::Nearest,
-            ..default()
-        });
-    // Use StandardMaterial with generated normal map for pebbling
-    // This avoids WGPU validation errors with custom shaders and provides
-    // physically based rendering for the ice surface.
-    let sheet_material = materials.add(StandardMaterial {
-        base_color: Color::srgba(0.92, 0.95, 0.98, 0.8),
-        normal_map_texture: Some(_normal_texture.clone()),
-        perceptual_roughness: 0.2, // Smooth but pebbled
-        reflectance: 0.1,          // Ice is not very metallic/reflective in this lighting
-        alpha_mode: bevy::render::alpha::AlphaMode::Blend,
-        ..default()
-    });
-    commands.spawn((
-        Mesh3d(sheet_mesh),
-        MeshMaterial3d(sheet_material),
-        Transform::from_translation(Vec3::new(0.0, 0.0, -SHEET_THICKNESS * 0.5)),
-        GameSceneElement,
-    ));
-    debug!(
-        width = SHEET_WIDTH,
-        length = SHEET_LENGTH,
-        "Created ice sheet with StandardMaterial and normal map"
-    );
+    // Note: No ice layer for main sheet - just painted markings on arena floor
+    // The side sheets provide the ice visual context
 
     // Line Materials (lit so they receive shadows)
     let line_black = materials.add(StandardMaterial {
@@ -428,11 +263,12 @@ pub fn setup_scene(
         ..default()
     });
 
-    // Z-depths for lines (negative = below ice surface)
-    // Center line is shallowest - it runs through the house and should be visible
-    const CENTER_LINE_Z: f32 = -0.001;
-    const TEE_LINE_Z: f32 = -0.002;
-    const OTHER_LINE_Z: f32 = -0.003;
+    // Z-depths for lines (positive = above base layer)
+    // Use larger separation to avoid z-fighting
+    const BASE_Z: f32 = 0.0; // Base white layer at z=0
+    const OTHER_LINE_Z: f32 = 0.005; // Hog lines, hacks, back lines
+    const TEE_LINE_Z: f32 = 0.006; // Tee line
+    const CENTER_LINE_Z: f32 = 0.007; // Center line on top
 
     // Center Line (Back to Back) - shallowest so it's visible through house
     spawn_line(
@@ -512,7 +348,7 @@ pub fn setup_scene(
     commands.spawn((
         Mesh3d(base_mesh),
         MeshMaterial3d(base_white),
-        Transform::from_translation(Vec3::new(0.0, 0.0, -0.008)), // Deepest layer
+        Transform::from_translation(Vec3::new(0.0, 0.0, BASE_Z)), // Base white layer
         GameSceneElement,
     ));
 
@@ -531,8 +367,9 @@ pub fn setup_scene(
     });
 
     // Draw Houses (Near and Far)
-    // Z positions are negative to place rings below the ice surface
-    // Larger rings are deeper so smaller rings paint over them
+    // Z positions are positive to place rings above the base
+    // Larger rings are lower so smaller rings paint over them
+    // Use z-values between base (0) and lines (0.005+)
     for &y in &[tee_line_far(), tee_line_near()] {
         spawn_house_ring(
             &mut commands,
@@ -540,7 +377,7 @@ pub fn setup_scene(
             ring_blue.clone(),
             HOUSE_RADIUS_12,
             y,
-            -0.006, // Largest ring, deepest
+            0.001, // Largest ring
         );
         spawn_house_ring(
             &mut commands,
@@ -548,7 +385,7 @@ pub fn setup_scene(
             ring_white.clone(),
             HOUSE_RADIUS_8,
             y,
-            -0.005,
+            0.002,
         );
         spawn_house_ring(
             &mut commands,
@@ -556,7 +393,7 @@ pub fn setup_scene(
             ring_red.clone(),
             HOUSE_RADIUS_4,
             y,
-            -0.004,
+            0.003,
         );
         spawn_house_ring(
             &mut commands,
@@ -564,7 +401,7 @@ pub fn setup_scene(
             ring_white.clone(),
             HOUSE_RADIUS_BUTTON,
             y,
-            -0.003, // Smallest ring, shallowest
+            0.004, // Smallest ring
         );
     }
     debug!("Created houses at near and far ends");

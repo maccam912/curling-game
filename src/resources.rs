@@ -495,3 +495,93 @@ impl PlayerPersonalities {
         }
     }
 }
+
+// ============================================================================
+// SIDE SHEET GAMES
+// ============================================================================
+
+/// State for a single AI-vs-AI game on a decorative side sheet.
+#[derive(Clone)]
+pub struct SideGameState {
+    /// Which side sheet this game is on (-2, -1, 1, 2).
+    pub sheet_id: i32,
+    /// X offset for this sheet in world coordinates.
+    pub x_offset: f32,
+    /// Current phase of the game.
+    pub phase: Phase,
+    /// Current shot index (0-15).
+    pub shot_index: u8,
+    /// Team that throws first this end.
+    pub first_throw_team: Team,
+    /// Current end number.
+    pub current_end: u8,
+    /// Positions of all stones on the sheet (local coordinates relative to sheet center).
+    pub stones: Vec<(Team, Vec2, CurlDirection, f32)>, // (team, pos, curl, angular_vel)
+    /// AI thinking timer.
+    pub ai_timer: bevy::time::Timer,
+    /// Pending shot parameters (angle, weight, curl) when throwing.
+    pub pending_throw: Option<(f32, f32, CurlDirection)>,
+    /// Entity of the currently moving stone.
+    pub thrown_stone_entity: Option<Entity>,
+    /// Time stones have been still.
+    pub still_time: f32,
+}
+
+impl SideGameState {
+    /// Creates a new side game state for the given sheet ID.
+    pub fn new(sheet_id: i32, x_offset: f32) -> Self {
+        use crate::constants::{SIDE_SHEET_AI_THINK_MAX, SIDE_SHEET_AI_THINK_MIN};
+        use rand::Rng;
+
+        let mut rng = rand::rng();
+        let initial_delay = rng.random_range(SIDE_SHEET_AI_THINK_MIN..SIDE_SHEET_AI_THINK_MAX);
+
+        Self {
+            sheet_id,
+            x_offset,
+            phase: Phase::CallingShot,
+            shot_index: 0,
+            first_throw_team: if rng.random_bool(0.5) {
+                Team::One
+            } else {
+                Team::Two
+            },
+            current_end: 1,
+            stones: Vec::new(),
+            ai_timer: bevy::time::Timer::from_seconds(initial_delay, bevy::time::TimerMode::Once),
+            pending_throw: None,
+            thrown_stone_entity: None,
+            still_time: 0.0,
+        }
+    }
+
+    /// Returns the team that should throw the current shot.
+    pub fn current_team(&self) -> Team {
+        if self.shot_index % 2 == 0 {
+            self.first_throw_team
+        } else {
+            self.first_throw_team.opponent()
+        }
+    }
+
+    /// Resets for a new end.
+    pub fn reset_for_new_end(&mut self) {
+        self.phase = Phase::CallingShot;
+        self.shot_index = 0;
+        self.stones.clear();
+        self.pending_throw = None;
+        self.thrown_stone_entity = None;
+        self.still_time = 0.0;
+        self.current_end += 1;
+        // Swap first throw team (scoring team throws last = has hammer)
+        self.first_throw_team = self.first_throw_team.opponent();
+    }
+}
+
+/// Resource holding all side sheet game states.
+/// Each entry is (sheet_id, x_offset, game_state).
+#[derive(Resource, Default)]
+pub struct SideSheetGames {
+    /// Game states for each side sheet: (sheet_id, x_offset, state).
+    pub games: Vec<(i32, f32, GameState)>,
+}

@@ -30,6 +30,7 @@ pub mod prediction;
 // pub mod reflection; // Removed
 pub mod settings;
 pub mod setup;
+pub mod side_sheets;
 pub mod splash;
 pub mod ui;
 pub mod viewport;
@@ -48,6 +49,7 @@ pub use prediction::*;
 // pub use reflection::*; // Removed
 pub use settings::*;
 pub use setup::*;
+pub use side_sheets::*;
 pub use splash::*;
 pub use ui::*;
 pub use viewport::*;

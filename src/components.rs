@@ -570,3 +570,26 @@ pub struct DisconnectionOverlay;
 /// Marker for the "Return to Menu" button on disconnection overlay.
 #[derive(Component)]
 pub struct DisconnectionReturnButton;
+
+// ============================================================================
+// SIDE SHEET COMPONENTS
+// ============================================================================
+
+/// Marker for entities belonging to a decorative side sheet.
+///
+/// The sheet_id indicates position: -2, -1 for left sheets, 1, 2 for right sheets.
+#[derive(Component)]
+pub struct SideSheetElement(pub i32);
+
+/// Marker for a stone on a decorative side sheet (not part of main game).
+#[derive(Component)]
+pub struct SideSheetStone {
+    /// Which side sheet this stone belongs to (-2, -1, 1, 2).
+    pub sheet_id: i32,
+    /// Which team owns this stone.
+    pub team: Team,
+    /// Curl direction for physics.
+    pub curl_direction: CurlDirection,
+    /// Angular velocity for curl physics.
+    pub angular_velocity: f32,
+}
