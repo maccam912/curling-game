@@ -148,23 +148,20 @@ pub fn setup_scene(
     ));
     debug!(position = ?skip_view_pos, "Spawned main camera");
 
-    // Main overhead spotlight (for primary shadows)
-    // Positioned centrally above the house for even shadow casting
+    // Main directional light from above (for shadows)
+    // Single shadow-casting light for clean, consistent shadows
     commands.spawn((
-        SpotLight {
-            intensity: 2_000_000.0, // Bright main overhead light
-            range: 50.0,
+        DirectionalLight {
+            illuminance: 15_000.0, // Bright overhead sunlight-like
             shadows_enabled: true,
-            outer_angle: std::f32::consts::FRAC_PI_2, // 90 degrees - wide coverage
-            inner_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
             ..default()
         },
-        Transform::from_xyz(0.0, TEE_FROM_CENTER, 30.0)
-            .looking_at(Vec3::new(0.0, TEE_FROM_CENTER, 0.0), Vec3::Y),
+        Transform::from_xyz(0.0, 0.0, 30.0).looking_at(Vec3::ZERO, Vec3::Y),
         GameSceneElement,
     ));
+    debug!("Spawned directional light with shadows");
 
-    // Linear arrays of lights along both sides of the sheet
+    // Linear arrays of point lights along both sides of the sheet
     // Simulates the rows of fluorescent fixtures in a curling club
     let side_light_height = 8.0;
     let side_light_x = 5.0; // Just outside the sheet width
@@ -177,23 +174,20 @@ pub fn setup_scene(
             let y_pos = start_y + (i as f32) * light_spacing;
             let pos = Vec3::new(side * side_light_x, y_pos, side_light_height);
             commands.spawn((
-                SpotLight {
-                    intensity: 800_000.0, // Lumens - overhead fixture brightness
+                PointLight {
+                    intensity: 400_000.0, // Lumens - overhead fixture brightness
                     range: 25.0,
-                    shadows_enabled: true,
-                    outer_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
-                    inner_angle: std::f32::consts::FRAC_PI_4, // 45 degrees
+                    shadows_enabled: false,
                     ..default()
                 },
-                // Point the spotlight downward
-                Transform::from_translation(pos).looking_at(Vec3::new(0.0, y_pos, 0.0), Vec3::Y),
+                Transform::from_translation(pos),
                 GameSceneElement,
             ));
         }
         debug!(
             side = if side > 0.0 { "right" } else { "left" },
             count = num_lights,
-            "Spawned side light array"
+            "Spawned side point light array"
         );
     }
 
@@ -216,36 +210,28 @@ pub fn setup_scene(
             house_y + y_offset,
             corner_light_height,
         );
-        // Point toward the house center
-        let target = Vec3::new(0.0, house_y, 0.0);
         commands.spawn((
-            SpotLight {
-                intensity: 600_000.0,
+            PointLight {
+                intensity: 300_000.0,
                 range: 30.0,
-                shadows_enabled: true,
-                outer_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
-                inner_angle: std::f32::consts::FRAC_PI_4, // 45 degrees
+                shadows_enabled: false,
                 ..default()
             },
-            Transform::from_translation(pos).looking_at(target, Vec3::Z),
+            Transform::from_translation(pos),
             GameSceneElement,
         ));
     }
-    debug!("Spawned 4 corner spotlight fixtures around house");
+    debug!("Spawned 4 corner point lights around house");
 
-    // Mirrored spotlight (below ice for reflections, no shadows)
-    // Shines upward to match the flipped normals from the negative Y scale
+    // Mirrored point light (below ice for reflections, no shadows)
     commands.spawn((
-        SpotLight {
-            intensity: 1_500_000.0,
+        PointLight {
+            intensity: 800_000.0,
             range: 50.0,
             shadows_enabled: false,
-            outer_angle: std::f32::consts::FRAC_PI_2, // 90 degrees
-            inner_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
             ..default()
         },
-        Transform::from_xyz(0.0, TEE_FROM_CENTER, -30.0)
-            .looking_at(Vec3::new(0.0, TEE_FROM_CENTER, 0.0), Vec3::Y),
+        Transform::from_xyz(0.0, TEE_FROM_CENTER, -15.0),
         GameSceneElement,
     ));
 
