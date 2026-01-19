@@ -203,6 +203,36 @@ pub fn setup_side_sheets(
             x_offset,
             side_sheet,
         );
+
+        // Edge lines (black lines on the sides of the sheet to delineate it)
+        const EDGE_LINE_Z: f32 = 0.008; // Above everything
+        let half_width = SHEET_WIDTH * 0.5;
+        // Left edge
+        spawn_line_at_offset(
+            &mut commands,
+            &mut meshes,
+            line_black.clone(),
+            Vec2::new(-half_width, 0.0),
+            SHEET_LENGTH,
+            true,
+            0.03,
+            EDGE_LINE_Z,
+            x_offset,
+            side_sheet,
+        );
+        // Right edge
+        spawn_line_at_offset(
+            &mut commands,
+            &mut meshes,
+            line_black.clone(),
+            Vec2::new(half_width, 0.0),
+            SHEET_LENGTH,
+            true,
+            0.03,
+            EDGE_LINE_Z,
+            x_offset,
+            side_sheet,
+        );
     }
 
     tracing::info!("Set up {} decorative side sheets", sheet_ids.len());

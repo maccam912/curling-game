@@ -406,6 +406,33 @@ pub fn setup_scene(
     }
     debug!("Created houses at near and far ends");
 
+    // Edge lines (black lines on the sides of the sheet to delineate it)
+    const EDGE_LINE_Z: f32 = 0.008; // Above everything
+    let half_width = SHEET_WIDTH * 0.5;
+    // Left edge
+    spawn_line(
+        &mut commands,
+        &mut meshes,
+        line_black.clone(),
+        Vec2::new(-half_width, 0.0),
+        SHEET_LENGTH,
+        true,
+        0.03,
+        EDGE_LINE_Z,
+    );
+    // Right edge
+    spawn_line(
+        &mut commands,
+        &mut meshes,
+        line_black.clone(),
+        Vec2::new(half_width, 0.0),
+        SHEET_LENGTH,
+        true,
+        0.03,
+        EDGE_LINE_Z,
+    );
+    debug!("Created edge lines");
+
     // Stone Assets - load GLB models for each team
     let red_scene: Handle<Scene> =
         asset_server.load(GltfAssetLabel::Scene(0).from_asset("red.glb"));
