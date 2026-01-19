@@ -148,18 +148,21 @@ pub fn setup_scene(
     ));
     debug!(position = ?skip_view_pos, "Spawned main camera");
 
-    // Main directional light from above (for shadows)
+    // Main spotlight from above (for shadows)
     // Single shadow-casting light for clean, consistent shadows
     commands.spawn((
-        DirectionalLight {
-            illuminance: 15_000.0, // Bright overhead sunlight-like
+        SpotLight {
+            intensity: 5_000_000.0, // Bright overhead
+            range: 60.0,
             shadows_enabled: true,
+            outer_angle: std::f32::consts::FRAC_PI_2, // 90 degrees - wide coverage
+            inner_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
             ..default()
         },
         Transform::from_xyz(0.0, 0.0, 30.0).looking_at(Vec3::ZERO, Vec3::Y),
         GameSceneElement,
     ));
-    debug!("Spawned directional light with shadows");
+    debug!("Spawned spotlight with shadows");
 
     // Linear arrays of point lights along both sides of the sheet
     // Simulates the rows of fluorescent fixtures in a curling club
