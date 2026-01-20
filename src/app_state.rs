@@ -27,6 +27,8 @@ pub enum AppState {
     PassAndPlay,
     /// Single player vs AI mode.
     VsAI,
+    /// AI vs AI spectator mode (watch two AIs play).
+    AiVsAi,
     /// Online multiplayer menu (create/join game).
     OnlineMenu,
     /// Lobby waiting for opponent to connect.

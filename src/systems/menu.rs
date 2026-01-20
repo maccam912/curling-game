@@ -30,6 +30,10 @@ pub struct OnlineMultiplayerButton;
 #[derive(Component)]
 pub struct VsAIButton;
 
+/// Marker for the "Watch AI" button (AI vs AI spectator mode).
+#[derive(Component)]
+pub struct WatchAIButton;
+
 /// Marker for the "Settings" button.
 #[derive(Component)]
 pub struct SettingsButton;
@@ -106,6 +110,15 @@ pub fn setup_main_menu(mut commands: Commands) {
                 "Play against the computer",
                 VsAIButton,
                 Color::srgb(0.6, 0.3, 0.5),
+            );
+
+            // Watch AI button (AI vs AI spectator mode)
+            spawn_menu_button(
+                parent,
+                "Watch AI",
+                "Watch two AIs play each other",
+                WatchAIButton,
+                Color::srgb(0.4, 0.5, 0.6),
             );
 
             // Online Multiplayer button
@@ -195,6 +208,7 @@ pub fn handle_menu_buttons(
     mut app_exit_events: MessageWriter<AppExit>,
     pass_play_query: Query<&Interaction, (Changed<Interaction>, With<PassAndPlayButton>)>,
     vs_ai_query: Query<&Interaction, (Changed<Interaction>, With<VsAIButton>)>,
+    watch_ai_query: Query<&Interaction, (Changed<Interaction>, With<WatchAIButton>)>,
     online_query: Query<&Interaction, (Changed<Interaction>, With<OnlineMultiplayerButton>)>,
     settings_query: Query<&Interaction, (Changed<Interaction>, With<SettingsButton>)>,
     quit_query: Query<&Interaction, (Changed<Interaction>, With<QuitButton>)>,
@@ -216,6 +230,14 @@ pub fn handle_menu_buttons(
         if *interaction == Interaction::Pressed {
             tracing::info!("Vs AI selected");
             next_state.set(AppState::VsAI);
+        }
+    }
+
+    // Handle Watch AI button (AI vs AI spectator mode)
+    for interaction in watch_ai_query.iter() {
+        if *interaction == Interaction::Pressed {
+            tracing::info!("Watch AI selected");
+            next_state.set(AppState::AiVsAi);
         }
     }
 

@@ -106,6 +106,15 @@ pub fn setup_ai_game(mut state: ResMut<GameState>) {
     tracing::info!("AI game setup: AI controls Team 2");
 }
 
+/// Sets up the game for AI-vs-AI spectator mode.
+///
+/// Both teams are controlled by AI, allowing the player to watch.
+pub fn setup_ai_vs_ai_game(mut state: ResMut<GameState>) {
+    state.ai_vs_ai = true;
+    state.ai_think_timer = 0.0;
+    tracing::info!("AI vs AI game setup: Both teams are AI-controlled");
+}
+
 /// Run condition: returns true only if it's the human player's turn.
 ///
 /// Use this to gate input systems in VsAI state so the human can't
@@ -131,21 +140,25 @@ pub fn ai_turn_system(
     stones: Query<(Entity, &Transform, &Stone)>,
     personalities: Res<PlayerPersonalities>,
 ) {
-    // Only act if AI is enabled and it's AI's turn
-    let ai_team = match state.ai_team {
-        Some(team) => team,
-        None => return,
+    // Determine if AI should act this turn
+    let ai_team = if state.ai_vs_ai {
+        // In AI-vs-AI mode, both teams are AI-controlled
+        state.current_team()
+    } else if let Some(team) = state.ai_team {
+        // In VsAI mode, only act if it's the AI team's turn
+        if state.current_team() != team {
+            // Reset timer when it's not AI's turn
+            state.ai_think_timer = 0.0;
+            return;
+        }
+        team
+    } else {
+        // No AI enabled
+        return;
     };
 
     // Only act during calling or aiming phase
     if state.phase != Phase::CallingShot && state.phase != Phase::Aiming {
-        return;
-    }
-
-    // Check if it's the AI's turn
-    if state.current_team() != ai_team {
-        // Reset timer when it's not AI's turn
-        state.ai_think_timer = 0.0;
         return;
     }
 

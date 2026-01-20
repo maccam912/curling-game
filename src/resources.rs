@@ -68,6 +68,8 @@ pub struct GameState {
     pub ai_team: Option<Team>,
     /// Timer for AI "thinking" delay before executing a shot.
     pub ai_think_timer: f32,
+    /// If true, both teams are AI-controlled (spectator mode).
+    pub ai_vs_ai: bool,
 }
 
 impl Default for GameState {
@@ -95,6 +97,7 @@ impl Default for GameState {
             end_scores: Vec::new(),
             ai_team: None,
             ai_think_timer: 0.0,
+            ai_vs_ai: false,
         }
     }
 }

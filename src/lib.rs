@@ -176,6 +176,7 @@ impl Plugin for CurlingPlugin {
                 systems::toggle_pause.run_if(
                     in_state(app_state::AppState::PassAndPlay)
                         .or(in_state(app_state::AppState::VsAI))
+                        .or(in_state(app_state::AppState::AiVsAi))
                         .or(in_state(app_state::AppState::OnlineGame)),
                 ),
             )
@@ -350,6 +351,67 @@ impl Plugin for CurlingPlugin {
                     systems::update_side_sheet_physics,
                 )
                     .run_if(in_state(app_state::AppState::VsAI)),
+            )
+            // ================================================================
+            // AI VS AI STATE (Spectator mode - watch two AIs play)
+            // ================================================================
+            .add_systems(OnEnter(app_state::AppState::AiVsAi), systems::setup_scene)
+            .add_systems(
+                OnEnter(app_state::AppState::AiVsAi),
+                (
+                    systems::configure_rapier,
+                    systems::setup_ui,
+                    systems::randomize_first_team,
+                    systems::setup_ai_vs_ai_game,
+                    systems::generate_player_personalities,
+                    systems::setup_side_sheets,
+                ),
+            )
+            // Physics systems for AI vs AI (FPS-independent)
+            .add_systems(
+                FixedUpdate,
+                (
+                    systems::ice_friction_system,
+                    systems::track_throwing_stone,
+                    systems::detect_stone_collision,
+                    systems::check_out_of_bounds,
+                    systems::detect_shot_end,
+                )
+                    .run_if(in_state(app_state::AppState::AiVsAi)),
+            )
+            // NO input systems - this is spectator mode!
+            // Core gameplay systems for AI vs AI (always run)
+            .add_systems(
+                Update,
+                (
+                    systems::viewport_detection_system,
+                    systems::update_window_title,
+                    systems::update_broom_visual,
+                    systems::update_stone_visual_rotation,
+                    systems::resolve_shot,
+                    systems::handle_score_confirmation,
+                    systems::camera_control_system,
+                    systems::update_ui,
+                    systems::update_score_summary_panel,
+                    systems::update_game_over_panel,
+                    systems::apply_responsive_ui,
+                    systems::ai_turn_system,
+                )
+                    .run_if(in_state(app_state::AppState::AiVsAi)),
+            )
+            .add_systems(
+                Update,
+                (
+                    systems::update_prediction,
+                    systems::update_ghost_stone_visual,
+                    systems::update_thrower_info,
+                    systems::update_hammer_icons,
+                    systems::update_curl_buttons_visibility,
+                    systems::disable_reflection_shadows,
+                    systems::update_side_sheet_games,
+                    systems::update_side_sheet_physics,
+                )
+                    .run_if(in_state(app_state::AppState::AiVsAi)),
             )
             // ================================================================
             // ONLINE GAME STATE (Multiplayer)

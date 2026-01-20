@@ -31,7 +31,7 @@ pub fn toggle_pause(
 ) {
     if keyboard.just_pressed(KeyCode::Escape) {
         match current_state.get() {
-            AppState::PassAndPlay | AppState::VsAI | AppState::OnlineGame => {
+            AppState::PassAndPlay | AppState::VsAI | AppState::AiVsAi | AppState::OnlineGame => {
                 // Save current state so we can resume to it
                 previous_state.0 = Some(current_state.get().clone());
                 next_state.set(AppState::Paused);
