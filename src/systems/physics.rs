@@ -126,6 +126,9 @@ pub fn ice_friction_system(time: Res<Time<Fixed>>, mut stones: Query<(&mut Veloc
         stone.angular_velocity = result.new_angular_velocity;
 
         if result.stopped {
+            // Also zero Rapier's angular velocity to prevent perpetual spinning
+            // (collisions impart angular momentum that would otherwise persist)
+            velocity.angvel = 0.0;
             trace!("Stone stopped");
         } else {
             trace!(
