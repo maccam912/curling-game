@@ -361,6 +361,10 @@ pub struct MainCamera;
 #[derive(Component)]
 pub struct GameSceneElement;
 
+/// Marker component for the main directional light (for brightness adjustment).
+#[derive(Component)]
+pub struct MainLight;
+
 // ============================================================================
 // UI COMPONENTS
 // ============================================================================
@@ -415,6 +419,10 @@ pub struct ConfirmButtonText;
 /// Marker for the hammer indicator's text child.
 #[derive(Component)]
 pub struct HammerText;
+
+/// Marker for the brightness input text field.
+#[derive(Component)]
+pub struct BrightnessInput;
 
 /// Marker for the GLB model visual.
 #[derive(Component)]

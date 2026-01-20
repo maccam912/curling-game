@@ -148,105 +148,18 @@ pub fn setup_scene(
     ));
     debug!(position = ?skip_view_pos, "Spawned main camera");
 
-    // Main spotlight from above (for shadows)
-    // Single shadow-casting light for clean, consistent shadows
+    // Single directional light - top down with shadows
+    // In this game Z is up, so light pointing NEG_Z shines downward from above
     commands.spawn((
-        SpotLight {
-            intensity: 5_000_000.0, // Bright overhead
-            range: 60.0,
+        DirectionalLight {
+            illuminance: 3000.0,
             shadows_enabled: true,
-            outer_angle: std::f32::consts::FRAC_PI_2, // 90 degrees - wide coverage
-            inner_angle: std::f32::consts::FRAC_PI_3, // 60 degrees
             ..default()
         },
-        Transform::from_xyz(0.0, 0.0, 30.0).looking_at(Vec3::ZERO, Vec3::Y),
+        Transform::default().looking_to(Vec3::NEG_Z, Vec3::Y),
         GameSceneElement,
     ));
-    debug!("Spawned spotlight with shadows");
-
-    // Linear arrays of point lights along both sides of the sheet
-    // Simulates the rows of fluorescent fixtures in a curling club
-    let side_light_height = 8.0;
-    let side_light_x = 5.0; // Just outside the sheet width
-    let light_spacing = 7.0; // Spacing between fixtures
-    let num_lights = 8; // Lights per side
-    let start_y = -SHEET_LENGTH * 0.4; // Start near delivery end
-
-    for side in [-1.0, 1.0] {
-        for i in 0..num_lights {
-            let y_pos = start_y + (i as f32) * light_spacing;
-            let pos = Vec3::new(side * side_light_x, y_pos, side_light_height);
-            commands.spawn((
-                PointLight {
-                    intensity: 400_000.0, // Lumens - overhead fixture brightness
-                    range: 25.0,
-                    shadows_enabled: false,
-                    ..default()
-                },
-                Transform::from_translation(pos),
-                GameSceneElement,
-            ));
-        }
-        debug!(
-            side = if side > 0.0 { "right" } else { "left" },
-            count = num_lights,
-            "Spawned side point light array"
-        );
-    }
-
-    // Four corner point lights for additional fill around the house
-    let corner_light_height = 10.0;
-    let corner_spread_x = 6.0;
-    let corner_spread_y = 10.0;
-    let house_y = TEE_FROM_CENTER;
-
-    let corner_lights = [
-        (1.0, corner_spread_y),   // NE - skip side, right
-        (1.0, -corner_spread_y),  // SE - delivery side, right
-        (-1.0, corner_spread_y),  // NW - skip side, left
-        (-1.0, -corner_spread_y), // SW - delivery side, left
-    ];
-
-    for (x_sign, y_offset) in corner_lights {
-        let pos = Vec3::new(
-            x_sign * corner_spread_x,
-            house_y + y_offset,
-            corner_light_height,
-        );
-        commands.spawn((
-            PointLight {
-                intensity: 300_000.0,
-                range: 30.0,
-                shadows_enabled: false,
-                ..default()
-            },
-            Transform::from_translation(pos),
-            GameSceneElement,
-        ));
-    }
-    debug!("Spawned 4 corner point lights around house");
-
-    // Mirrored point light (below ice for reflections, no shadows)
-    commands.spawn((
-        PointLight {
-            intensity: 800_000.0,
-            range: 50.0,
-            shadows_enabled: false,
-            ..default()
-        },
-        Transform::from_xyz(0.0, TEE_FROM_CENTER, -15.0),
-        GameSceneElement,
-    ));
-
-    // Ambient light for base illumination
-    commands.spawn((
-        AmbientLight {
-            color: Color::WHITE,
-            brightness: 400.0,
-            ..default()
-        },
-        GameSceneElement,
-    ));
+    debug!("Spawned single directional light pointing downward (-Z)");
 
     // Note: No ice layer for main sheet - just painted markings on arena floor
     // The side sheets provide the ice visual context
@@ -556,20 +469,7 @@ pub fn setup_scene(
     ));
     debug!("Created arena walls");
 
-    // Ceiling - dark to absorb light and contain the space
-    let ceiling_material = materials.add(StandardMaterial {
-        base_color: Color::srgb(0.08, 0.08, 0.1), // Very dark
-        perceptual_roughness: 1.0,
-        ..default()
-    });
-    let ceiling_mesh = meshes.add(Cuboid::new(ARENA_WIDTH, ARENA_LENGTH, 0.2));
-    commands.spawn((
-        Mesh3d(ceiling_mesh),
-        MeshMaterial3d(ceiling_material),
-        Transform::from_xyz(0.0, 0.0, ARENA_CEILING_HEIGHT),
-        GameSceneElement,
-    ));
-    debug!("Created arena ceiling");
+    // Ceiling removed to allow directional light from above
 
     // Player benches behind each hack
     let bench_material = materials.add(StandardMaterial {

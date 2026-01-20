@@ -335,6 +335,25 @@ pub struct PredictionState {
 }
 
 // ============================================================================
+// LIGHT SETTINGS
+// ============================================================================
+
+/// Settings for the main directional light (runtime adjustable).
+#[derive(Resource)]
+pub struct LightSettings {
+    /// Illuminance value for the directional light.
+    pub illuminance: f32,
+}
+
+impl Default for LightSettings {
+    fn default() -> Self {
+        Self {
+            illuminance: 50_000.0, // Bright default
+        }
+    }
+}
+
+// ============================================================================
 // PLAYER PERSONALITIES
 // ============================================================================
 
